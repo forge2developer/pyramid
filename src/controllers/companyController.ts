@@ -8,6 +8,7 @@ export interface Company {
   count: number;
   customer_name: string;
   phone: string;
+  gstNumber?: string;
 }
 
 // Get all companies for dropdown
@@ -25,7 +26,8 @@ export const getAllCompany = async (
     let {
       company_name,
       customer_name,
-      location,
+      address,
+      city,
       phone,
     } = req.body;
 
@@ -41,9 +43,13 @@ export const getAllCompany = async (
       filterConditions.push("customer_name LIKE ?");
       filterValues.push(`%${customer_name}%`); // Use LIKE for partial matches
     }
-    if (location) {
-      filterConditions.push("location LIKE ?");
-      filterValues.push(`%${location}%`);
+    if (address) {
+      filterConditions.push("address LIKE ?");
+      filterValues.push(`%${address}%`);
+    }
+    if (city) {
+      filterConditions.push("city LIKE ?");
+      filterValues.push(`%${city}%`);
     }
     if (phone) {
       filterConditions.push("phone = ?");
@@ -101,7 +107,11 @@ export const AddCompany = async (
       company_name,
       customer_name,
       phone,
-      location,
+      address,
+      city,
+      pinCode,
+      gstNumber,
+      isActive,
     } = req.body;
 
     // Validate required fields
@@ -111,13 +121,43 @@ export const AddCompany = async (
       throw error;
     }
 
+    // Check for duplicates
+    let checkQuery = "SELECT * FROM company WHERE phone = ?";
+    const checkParams: any[] = [phone];
+
+    if (gstNumber) {
+      checkQuery += " OR gstNumber = ?";
+      checkParams.push(gstNumber);
+    }
+
+    const [existingCompany] = await pool.execute<any[]>(checkQuery, checkParams);
+
+    if (existingCompany.length > 0) {
+      for (const company of existingCompany) {
+        if (company.phone === phone) {
+          const error: AppError = new Error("Phone number already exists");
+          error.statusCode = 409;
+          throw error;
+        }
+        if (gstNumber && company.gstNumber === gstNumber) {
+          const error: AppError = new Error("GST Number already exists");
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+    }
+
     const [result] = await pool.execute<any>(
-      `INSERT INTO company(company_name, customer_name, phone, location)VALUES (?, ?, ?, ?)`,
+      `INSERT INTO company(company_name, customer_name, phone, address, city, pinCode, gstNumber, isActive)VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         company_name || null,
         customer_name || null,
         phone || null,
-        location || null,
+        address || null,
+        city || null,
+        pinCode || null,
+        gstNumber || null,
+        isActive !== undefined ? isActive : 1
       ]
     );
 
@@ -190,7 +230,17 @@ export const getCompanyDetails = async (
       pool.execute<any[]>(createQuery("ssd"), [companyID, limit, offset]),
       pool.execute<any[]>(createQuery("nvme"), [companyID, limit, offset]),
       pool.execute<any[]>(createQuery("graphicscard"), [companyID, limit, offset]),
-      pool.execute<any[]>(createQuery("mobileworkstation"), [companyID, limit, offset]),
+      // Modified query for mobileworkstation to include component details
+      pool.execute<any[]>(
+        `SELECT mw.*, 
+          (SELECT GROUP_CONCAT(CONCAT(r.size, ' ', r.brand) SEPARATOR ', ') FROM ram r WHERE r.MobileWorkstationID = mw.id) AS ram_details,
+          (SELECT GROUP_CONCAT(CONCAT(s.ssdSize, ' ', s.brand) SEPARATOR ', ') FROM ssd s WHERE s.MobileWorkstationID = mw.id) AS ssd_details,
+          (SELECT GROUP_CONCAT(CONCAT(n.Size, ' ', n.brand) SEPARATOR ', ') FROM nvme n WHERE n.MobileWorkstationID = mw.id) AS nvme_details,
+          (SELECT GROUP_CONCAT(CONCAT(m.size, ' ', m.brand) SEPARATOR ', ') FROM m_2 m WHERE m.MobileWorkstationID = mw.id) AS m2_details,
+          (SELECT CONCAT(IFNULL(g.size, ''), ' ', IFNULL(g.brand, ''), ' ', IFNULL(g.model, '')) FROM graphicscard g WHERE g.id = mw.graphicscardID) AS graphicscard_details
+         FROM mobileworkstation mw WHERE mw.CompanyID = ? AND mw.isActive = 1 LIMIT ? OFFSET ?`,
+        [companyID, limit, offset]
+      ),
       pool.execute<any[]>(createQuery("m_2"), [companyID, limit, offset])
     ]);
 

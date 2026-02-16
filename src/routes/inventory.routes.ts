@@ -2,7 +2,6 @@ import { Router } from "express";
 import {
   getAllLaptops,
   getInventoryFilter,
-  // addLaptop,
   deleteLaptop,
   getAllCompanies,
   getAllMonitors,
@@ -11,16 +10,8 @@ import {
   getAllSSD,
   getAllNVMe,
   getAllHDD,
-  // addRam,
-  // addSSD,
-  // addNVMe,
-  // addHDD,
-  // addMonitor,
-  // addDesktop,
   getAllGraphicsCard,
   getAllWorkstation,
-  // addWorkstation,
-  // addGraphicsCard,
   updateRam,
   updateLaptop,
   updateMonitor,
@@ -32,7 +23,7 @@ import {
   updateGraphicsCard,
   updateWorkstation,
   addBulkProducts,
-  addLaptop,
+  addLaptopNew as addLaptop,
   addNVMe,
   addHDD,
   addDesktop,
@@ -82,7 +73,6 @@ router.get("/laptops:id", getInventoryFilter);
 // POST /api/inventory - Add new laptop (protected)
 // PUT /api/inventory/:id - Update laptop (protected)
 router.post("/addLaptops", addLaptop);
-router.post("/addLaptops", addLaptop);
 router.post("/updateLaptop", updateLaptop);
 
 // Laptop History
@@ -107,7 +97,6 @@ router.post("/addBulkProducts", addBulkProducts);
 
 // PDF Generation
 router.post("/generate-challan", generateDeliveryChallan);
-// router.put("/:id", authenticate, updateLaptop);
 // DELETE /api/inventory/:id - Delete laptop (protected)
 router.delete("/:id", authenticate, deleteLaptop);
 
@@ -125,7 +114,6 @@ router.get("/history/mobileWorkstation/:id", getMobileWorkstationHistory);
 
 router.post("/getallLaptops", getAllLaptops);
 router.post("/getallMobileWorkstation", getAllMobileWorkstation);
-``
 router.post("/getallMonitor", getAllMonitors);
 router.post("/getAllSystems", getAllSystem);
 router.post("/updateSystem", updateSystem);
@@ -149,9 +137,6 @@ router.post("/editLaptops", updateLaptops);
 router.post("/editWorkstation", updateWorkstation);
 router.post("/updateMobileWorkStation", updateMobileWorkstation);
 
-// router.post("/FilterLaptop", getAllLaptops);
-// POST /api/inventory - Add all inventory
-// router.post("/", authenticate, addLaptop);
 
 
 // M.2 Routes

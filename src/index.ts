@@ -14,11 +14,7 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  cors()
 );
 
 app.use(express.json());
@@ -33,6 +29,13 @@ app.get("/", (req: Request, res: Response) => {
     message: "Welcome to Phyramid API",
     version: "1.0.0",
     docs: "/api/health",
+  });
+});
+
+app.get("/sanity-check", (req: Request, res: Response) => {
+  res.json({
+    message: "I AM LIVE - NEW CODE IS RUNNING",
+    timestamp: new Date().toISOString()
   });
 });
 
