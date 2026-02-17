@@ -1254,6 +1254,7 @@ export const getAllSystem = async (
 
 
 // Get single laptop by ID 
+// Get Single Laptop by ID
 export const getInventoryFilter = async (
   req: Request,
   res: Response,
@@ -1269,18 +1270,24 @@ export const getInventoryFilter = async (
         l.model,
         l.processor_brand,
         l.processor_model,
-        l.graphics,
-        l.graphics_ram,
+        l.generation,
         l.service_id,
-        l.brand_id,
-        l.company_id,
+        l.CompanyID,
         l.date_of_purchase,
         l.adapter,
+        l.ramID,
+        l.graphicscardID,
+        l.storageType,
+        l.storageSize,
+        l.inventoryID,
+        l.phyramidID,
+        l.isAvailable,
+        l.isActive,
         c.company_name,
         c.customer_name,
         c.phone
       FROM laptop l
-      LEFT JOIN company c ON l.company_id = c.id
+      LEFT JOIN company c ON l.CompanyID = c.id
       WHERE l.id = ?`,
       [id]
     );
@@ -4637,19 +4644,27 @@ export const updateLaptops = async (
 ): Promise<void> => {
   try {
     const {
-      // Main fields (from updateLaptop)
-      adapter,
+      // Main fields matching schema
+      id,
       brand,
-      brand_id,
-      date_of_purchase,
-      graphics,
-      graphics_ram,
-      service_id,
       model,
       processor_brand,
       processor_model,
-      id,
-      // Components (from updateRam logic)
+      generation,
+      service_id,
+      CompanyID,
+      date_of_purchase,
+      adapter,
+      ramID,
+      graphicscardID,
+      storageType,
+      storageSize,
+      inventoryID,
+      phyramidID,
+      isAvailable,
+      isActive,
+
+      // Components to assign/unassign
       addRam,
       removeRam,
       addSSD,
@@ -4670,31 +4685,42 @@ export const updateLaptops = async (
     const promises: Promise<any>[] = [];
 
     // 1. Update Laptop Main Details
-    if (brand || model) {
-      const laptopUpdatePromise = pool.execute<any>(
-        `UPDATE laptop SET brand = ?, model = ?, processor_brand = ?, processor_model = ?, graphics = ?, graphics_ram = ?, service_id = ?, date_of_purchase = ?, adapter = ? WHERE id = ?`,
-        [
-          brand || null,
-          model || null,
-          processor_brand || null,
-          processor_model || null,
-          graphics || null,
-          graphics_ram || null,
-          service_id || null,
-          date_of_purchase || null,
-          adapter || null,
-          id,
-        ]
-      );
-      promises.push(laptopUpdatePromise);
+    // Construct dynamic update query based on provided fields
+    let fieldsToUpdate: string[] = [];
+    let valuesToUpdate: any[] = [];
+
+    if (brand !== undefined) { fieldsToUpdate.push("brand = ?"); valuesToUpdate.push(brand); }
+    if (model !== undefined) { fieldsToUpdate.push("model = ?"); valuesToUpdate.push(model); }
+    if (processor_brand !== undefined) { fieldsToUpdate.push("processor_brand = ?"); valuesToUpdate.push(processor_brand); }
+    if (processor_model !== undefined) { fieldsToUpdate.push("processor_model = ?"); valuesToUpdate.push(processor_model); }
+    if (generation !== undefined) { fieldsToUpdate.push("generation = ?"); valuesToUpdate.push(generation); }
+    if (service_id !== undefined) { fieldsToUpdate.push("service_id = ?"); valuesToUpdate.push(service_id); }
+    if (CompanyID !== undefined) { fieldsToUpdate.push("CompanyID = ?"); valuesToUpdate.push(CompanyID); }
+    if (date_of_purchase !== undefined) { fieldsToUpdate.push("date_of_purchase = ?"); valuesToUpdate.push(date_of_purchase); }
+    if (adapter !== undefined) { fieldsToUpdate.push("adapter = ?"); valuesToUpdate.push(adapter); }
+    if (ramID !== undefined) { fieldsToUpdate.push("ramID = ?"); valuesToUpdate.push(ramID); }
+    if (graphicscardID !== undefined) { fieldsToUpdate.push("graphicscardID = ?"); valuesToUpdate.push(graphicscardID); }
+    if (storageType !== undefined) { fieldsToUpdate.push("storageType = ?"); valuesToUpdate.push(storageType); }
+    if (storageSize !== undefined) { fieldsToUpdate.push("storageSize = ?"); valuesToUpdate.push(storageSize); }
+    if (inventoryID !== undefined) { fieldsToUpdate.push("inventoryID = ?"); valuesToUpdate.push(inventoryID); }
+    if (phyramidID !== undefined) { fieldsToUpdate.push("phyramidID = ?"); valuesToUpdate.push(phyramidID); }
+    if (isAvailable !== undefined) { fieldsToUpdate.push("isAvailable = ?"); valuesToUpdate.push(isAvailable); }
+    if (isActive !== undefined) { fieldsToUpdate.push("isActive = ?"); valuesToUpdate.push(isActive); }
+
+    if (fieldsToUpdate.length > 0) {
+      const sql = `UPDATE laptop SET ${fieldsToUpdate.join(", ")} WHERE id = ?`;
+      valuesToUpdate.push(id);
+      promises.push(pool.execute(sql, valuesToUpdate));
     }
+
+    const companyIdToUse = CompanyID || req.body.company_id || null;
 
     // 2. RAM Updates
     if (Array.isArray(addRam)) {
       addRam.forEach((ram: any) => {
         promises.push(pool.execute(
           `UPDATE ram SET laptopID = ?, companyID = ?, isAvailable = 0 WHERE id = ?`,
-          [id, req.body.CompanyID || null, ram.id]
+          [id, companyIdToUse, ram.id]
         ));
       });
     }
@@ -4712,7 +4738,7 @@ export const updateLaptops = async (
       addSSD.forEach((item: any) => {
         promises.push(pool.execute(
           `UPDATE ssd SET laptopID = ?, companyID = ?, isAvailable = 0 WHERE ssdID = ?`,
-          [id, req.body.CompanyID || null, item.ssdID]
+          [id, companyIdToUse, item.ssdID]
         ));
       });
     }
@@ -4730,7 +4756,7 @@ export const updateLaptops = async (
       addNvme.forEach((item: any) => {
         promises.push(pool.execute(
           `UPDATE nvme SET laptopID = ?, companyID = ?, isAvailable = 0 WHERE ID = ?`,
-          [id, req.body.CompanyID || null, item.ID]
+          [id, companyIdToUse, item.ID]
         ));
       });
     }
@@ -4746,17 +4772,19 @@ export const updateLaptops = async (
     // 5. M.2 Updates
     if (Array.isArray(addM2)) {
       addM2.forEach((item: any) => {
+        const m2Id = item.id || item.ID;
         promises.push(pool.execute(
           `UPDATE m_2 SET laptopID = ?, CompanyID = ?, isAvailable = 0 WHERE id = ?`,
-          [id, req.body.CompanyID || null, item.id]
+          [id, companyIdToUse, m2Id]
         ));
       });
     }
     if (Array.isArray(removeM2)) {
       removeM2.forEach((item: any) => {
+        const m2Id = item.id || item.ID;
         promises.push(pool.execute(
           `UPDATE m_2 SET laptopID = NULL, CompanyID = NULL, isAvailable = 1 WHERE id = ?`,
-          [item.id]
+          [m2Id]
         ));
       });
     }
@@ -4794,11 +4822,6 @@ export const addM_2 = async (
       }
     }
 
-    // Check for duplicates
-    // Schema: service_id (int not null), phyramidID (varchar)
-    // Note: service_id is int, but user input might be alphanumeric if they meant Serial Number.  
-    // We will try to map serialNumber to service_id, but it might fail if not int.
-    // However, to fix the 'Unknown column' error, we must use service_id.
     const pyramidIDs = items.map((i: any) => i.phyramidID).filter((id: any) => id);
 
     if (pyramidIDs.length > 0) {

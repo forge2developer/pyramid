@@ -103,16 +103,7 @@ export const AddCompany = async (
   console.log('Brand', req);
   try {
 
-    const {
-      company_name,
-      customer_name,
-      phone,
-      address,
-      city,
-      pinCode,
-      gstNumber,
-      isActive,
-    } = req.body;
+    const { company_name, customer_name, phone, address, city, pinCode, gstNumber, isActive } = req.body;
 
     // Validate required fields
     if (!company_name) {
@@ -169,6 +160,7 @@ export const AddCompany = async (
       },
     });
   } catch (error) {
+    console.error("addCompany", error);
     next(error);
   }
 };
