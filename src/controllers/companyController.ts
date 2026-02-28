@@ -1813,7 +1813,7 @@ export const companyUpdateGraphicsCard = async (
     }
     if (action === "add") {
       const [result] = await pool.execute<any>(
-        `UPDATE graphicsCard SET CompanyID= ?, isAvailable = 0 WHERE ID = ?`,
+        `UPDATE graphicscard SET CompanyID= ?, isAvailable = 0 WHERE ID = ?`,
         [
           CompanyID || null,
           ID || null,
@@ -1822,7 +1822,7 @@ export const companyUpdateGraphicsCard = async (
     }
     else if (action === "remove") {
       const [result] = await pool.execute<any>(
-        `UPDATE graphicsCard SET CompanyID= NULL, isAvailable = 1 WHERE ID = ?`,
+        `UPDATE graphicscard SET CompanyID= NULL, isAvailable = 1 WHERE ID = ?`,
         [
           ID || null,
         ]

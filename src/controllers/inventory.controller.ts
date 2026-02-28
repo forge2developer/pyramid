@@ -2669,7 +2669,7 @@ export const updateLaptop = async (
         service_id || null,
         CompanyID || null,
         phyramidID || null,
-        date_of_purchase || null,
+        date_of_purchase ? new Date(date_of_purchase).toISOString().split('T')[0] : null,
         adapter || null,
         inventoryID || null,
         id,
@@ -2907,11 +2907,11 @@ export const updateNvme = async (
       [
         Size || null,
         brand || null, // Should not be null due to validation but safe to default
-        dateOfPurchase || null,
+        dateOfPurchase ? new Date(dateOfPurchase).toISOString().split('T')[0] : null,
         serialNumber || null,
         serviceTag || null,
         speed || null,
-        warrantyEndDate || null,
+        warrantyEndDate ? new Date(warrantyEndDate).toISOString().split('T')[0] : null,
         phyramidID || null,
         id || req.body.ID, // Handle both id and ID
       ]
@@ -2966,7 +2966,7 @@ export const editRam = async (
         systemID ?? null,
         WorkstationID ?? null,
         brand ?? null,
-        date_of_purchase ?? null,
+        date_of_purchase ? new Date(date_of_purchase).toISOString().split('T')[0] : null,
         form_factor ?? null,
         phyramidID ?? null,
         service_id ?? null,
@@ -3042,7 +3042,7 @@ export const updateSystem = async (
         Brand || Name || null,
         Processor || null,
         generation || null,
-        dateOfPurchase || null,
+        dateOfPurchase ? new Date(dateOfPurchase).toISOString().split('T')[0] : null,
         ramID || null,
         ssdID || null,
         nvmeID || null,
@@ -3598,7 +3598,7 @@ export const getGraphicsCardHistory = async (
     // 1. Get Graphics Card Details
     const [cards] = await pool.execute<any[]>(
       `SELECT g.*
-       FROM graphicsCard g
+       FROM graphicscard g
        WHERE g.ID = ?`,
       [id]
     );
@@ -4195,8 +4195,8 @@ export const updateSSD = async (
         speed ?? null,
         SerialNumber ?? null,
         serviceTag ?? null,
-        warrantyEndDate ?? null,
-        dateOfPurchase ?? null,
+        warrantyEndDate ? new Date(warrantyEndDate).toISOString().split('T')[0] : null,
+        dateOfPurchase ? new Date(dateOfPurchase).toISOString().split('T')[0] : null,
         phyramidID ?? null,
         ssdID,
       ]
@@ -4243,6 +4243,10 @@ export const updateHDD = async (
       throw error;
     }
 
+    const formattedWarrantyEnd = warrantyEndData ? new Date(warrantyEndData).toISOString().split('T')[0] : null;
+    const formattedPurchase = dateOfPurchase ? new Date(dateOfPurchase).toISOString().split('T')[0] : null;
+    console.log(`[updateHDD DEBUG] original: ${warrantyEndData}, formatted: ${formattedWarrantyEnd}`);
+
     const [result] = await pool.execute<any>(
       `UPDATE hdd SET brand=?,size=?,speed=?,serialNumber=?,serviceTag=?,warrantyEndData=?,dateOfPurchase=?,phyramidID=? WHERE ID = ?`,
       [
@@ -4251,8 +4255,8 @@ export const updateHDD = async (
         speed || null,
         serialNumber || null,
         serviceTag || null,
-        warrantyEndData || null,
-        dateOfPurchase || null,
+        formattedWarrantyEnd,
+        formattedPurchase,
         phyramidID || null,
         ID,
       ]
@@ -4303,7 +4307,7 @@ export const updateGraphicsCard = async (
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE graphicsCard SET brand = ?,size = ?,generation = ?,model = ?,serviceTag = ?,serviceNumber = ?,warrantyEndDate = ?,dateOfPurchase = ?,phyramidID = ? WHERE ID = ?`,
+      `UPDATE graphicscard SET brand = ?,size = ?,generation = ?,model = ?,serviceTag = ?,serviceNumber = ?,warrantyEndDate = ?,dateOfPurchase = ?,phyramidID = ? WHERE ID = ?`,
       [
         brand ?? null,
         size ?? null,
@@ -4311,8 +4315,8 @@ export const updateGraphicsCard = async (
         model ?? null,
         serviceTag ?? null,
         serviceNumber ?? null,
-        warrantyEndDate ?? null,
-        dateOfPurchase ?? null,
+        warrantyEndDate ? new Date(warrantyEndDate).toISOString().split('T')[0] : null,
+        dateOfPurchase ? new Date(dateOfPurchase).toISOString().split('T')[0] : null,
         phyramidID ?? null,
         ID,
       ]
@@ -4376,7 +4380,7 @@ export const addBulkProducts = async (
             item.service_id || null,
             companyId,
             item.phyramidID || null,
-            item.date_of_purchase || null,
+            item.date_of_purchase ? new Date(item.date_of_purchase).toISOString().split('T')[0] : null,
             item.adapter || null,
             item.inventoryID || null,
             item.ramID || null,
@@ -4410,7 +4414,7 @@ export const addBulkProducts = async (
             item.nvmeID || null,
             item.m2ID || null,
             item.graphicscardID || null,
-            item.dateOfPurchase || null,
+            item.dateOfPurchase ? new Date(item.dateOfPurchase).toISOString().split('T')[0] : null,
             item.inventoryID || null,
             companyId,
             item.id
@@ -4436,7 +4440,7 @@ export const addBulkProducts = async (
             item.Name,
             item.Processor || null,
             item.Generation || null,
-            item.dateOfPurchase || null,
+            item.dateOfPurchase ? new Date(item.dateOfPurchase).toISOString().split('T')[0] : null,
             item.pyramidsID || null,
             item.serviceID || null,
             item.inventoryID || null,
@@ -4465,8 +4469,8 @@ export const addBulkProducts = async (
             item.size || null,
             item.service_tag || null,
             item.pyramid_id || null,
-            item.date_of_purchase || null,
-            item.warranty_date || null,
+            item.date_of_purchase ? new Date(item.date_of_purchase).toISOString().split('T')[0] : null,
+            item.warranty_date ? new Date(item.warranty_date).toISOString().split('T')[0] : null,
             companyId,
             item.id
           ]
@@ -4493,8 +4497,8 @@ export const addBulkProducts = async (
             item.speed || null,
             item.SerialNumber || null,
             item.serviceTag || null,
-            item.warrantyEndDate || null,
-            item.dateOfPurchase || null,
+            item.warrantyEndDate ? new Date(item.warrantyEndDate).toISOString().split('T')[0] : null,
+            item.dateOfPurchase ? new Date(item.dateOfPurchase).toISOString().split('T')[0] : null,
             companyId,
             item.ssdID
           ]
@@ -4520,8 +4524,8 @@ export const addBulkProducts = async (
             item.speed || null,
             item.serialNumber || null,
             item.serviceTag || null,
-            item.warrantyEndData || null,
-            item.dateOfPurchase || null,
+            item.warrantyEndData ? new Date(item.warrantyEndData).toISOString().split('T')[0] : null,
+            item.dateOfPurchase ? new Date(item.dateOfPurchase).toISOString().split('T')[0] : null,
             item.size || null,
             companyId,
             item.ID
@@ -4549,8 +4553,8 @@ export const addBulkProducts = async (
             item.speed || null,
             item.serialNumber || null,
             item.serviceTag || null,
-            item.warrantyEndDate || null,
-            item.dateOfPurchase || null,
+            item.warrantyEndDate ? new Date(item.warrantyEndDate).toISOString().split('T')[0] : null,
+            item.dateOfPurchase ? new Date(item.dateOfPurchase).toISOString().split('T')[0] : null,
             companyId,
             item.ID
           ]
@@ -4578,8 +4582,8 @@ export const addBulkProducts = async (
             item.generation || null,
             item.serviceNumber || null,
             item.serviceTag || null,
-            item.warrantyEndDate || null,
-            item.dateOfPurchase || null,
+            item.warrantyEndDate ? new Date(item.warrantyEndDate).toISOString().split('T')[0] : null,
+            item.dateOfPurchase ? new Date(item.dateOfPurchase).toISOString().split('T')[0] : null,
             companyId,
             item.ID
           ]
@@ -4602,7 +4606,7 @@ export const addBulkProducts = async (
            WHERE id=?`,
           [
             item.brand,
-            item.date_of_purchase || null,
+            item.date_of_purchase ? new Date(item.date_of_purchase).toISOString().split('T')[0] : null,
             item.form_factor || null,
             item.pyramid_id || item.phyramidID || null,
             item.service_id || null,
@@ -4634,7 +4638,7 @@ export const addBulkProducts = async (
             item.processor_brand || null,
             item.processor_model || null,
             item.generation || null,
-            item.date_of_purchase || item.dateOfPurchase || null,
+            (item.date_of_purchase || item.dateOfPurchase) ? new Date(item.date_of_purchase || item.dateOfPurchase).toISOString().split('T')[0] : null,
             item.adapter || null,
             item.phyramidID || null,
             item.service_id || item.serviceTag || null,
@@ -4664,7 +4668,7 @@ export const addBulkProducts = async (
             item.type || null,
             item.form_factor || null,
             item.service_id || null,
-            item.date_of_purchase || null,
+            item.date_of_purchase ? new Date(item.date_of_purchase).toISOString().split('T')[0] : null,
             item.phyramidID || null,
             companyId,
             item.id
@@ -4755,7 +4759,7 @@ export const updateWorkstation = async (
         nvmeID ?? null,
         m2ID ?? null,
         graphicscardID ?? null,
-        dateOfPurchase ?? null,
+        dateOfPurchase ? new Date(dateOfPurchase).toISOString().split('T')[0] : null,
         inventoryID ?? null,
         id,
       ]
@@ -4929,7 +4933,8 @@ export const updateMobileWorkstation = async (
     if (adapter !== undefined) { updates.push("adapter = ?"); values.push(adapter); }
 
     // Date of Purchase
-    const dop = date_of_purchase !== undefined ? date_of_purchase : dateOfPurchase;
+    const rawDop = date_of_purchase !== undefined ? date_of_purchase : dateOfPurchase;
+    const dop = rawDop ? new Date(rawDop).toISOString().split('T')[0] : (rawDop === null ? null : undefined);
     if (dop !== undefined) { updates.push("date_of_purchase = ?"); values.push(dop); }
 
     // IDs (legacy support)
@@ -5586,7 +5591,7 @@ export const updateM_2 = async (
     }
     if (date_of_purchase !== undefined) {
       updates.push("date_of_purchase = ?");
-      values.push(date_of_purchase);
+      values.push(date_of_purchase ? new Date(date_of_purchase).toISOString().split('T')[0] : date_of_purchase);
     }
     if (phyramidID !== undefined) {
       updates.push("phyramidID = ?");
