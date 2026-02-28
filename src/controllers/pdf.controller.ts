@@ -9,7 +9,7 @@ const safeText = (text: any) => text ? String(text) : '';
 
 export const generateDeliveryChallan = async (req: Request, res: Response) => {
     try {
-        const { companyDetails, products, challanType = 'DELIVERY', challanRemark, challanDate, customCompanyName, customAddress } = req.body; // challanType: 'DELIVERY' | 'RETURN'
+        const { companyDetails, products, challanType = 'DELIVERY', challanRemark, challanDate, customCompanyName, customAddress, accessories } = req.body; // challanType: 'DELIVERY' | 'RETURN'
 
         // --- DB ENTRY FIRST to get auto-increment ID ---
         let challanId: number;
@@ -125,7 +125,7 @@ export const generateDeliveryChallan = async (req: Request, res: Response) => {
         const isReplace = challanType.startsWith('REPLACE');
 
         if (isReturn) {
-            title = isReplace ? 'REPLACE RETURN CHALLAN' : 'RETURN CHALLAN';
+            title = isReplace ? 'REPLACEMENT DELIVERY CHALLAN' : 'RETURN CHALLAN';
             // Sender is Client
             sender = {
                 name: clientDetails.name,
@@ -144,7 +144,7 @@ export const generateDeliveryChallan = async (req: Request, res: Response) => {
             deliveryAt = ''; // Image shows empty or maybe same address
         } else {
             // DELIVERY (including REPLACE_DELIVERY)
-            title = isReplace ? 'REPLACE DELIVERY CHALLAN' : 'DELIVERY CHALLAN';
+            title = isReplace ? 'REPLACEMENT DELIVERY CHALLAN' : 'DELIVERY CHALLAN';
 
             // Sender is Pyramid
             sender = {
@@ -434,14 +434,6 @@ export const generateDeliveryChallan = async (req: Request, res: Response) => {
             // Base Specs
             const specs = renderItemSpecs(first, type);
 
-            // Fetch and Attach Components for Group
-            // We'll fetch for the first item to represent the "Config" of the group
-            // Assuming homogeneous group. If heterogeneous, we might need a note.
-            // For rigorous accuracy, we could check if all items have same components.
-            // For now, we take the components of the first item as representative 
-            // OR list components per Serial Number if they differ (too complex for limited space).
-            // Let's list components of the first item as the "Standard Configuration" for this line item.
-
             if (['laptop', 'system', 'workstation', 'mobileworkstation'].includes(type.toLowerCase())) {
                 try {
                     const components = await fetchComponents(type.toLowerCase(), first.id || first.ID);
@@ -530,6 +522,46 @@ export const generateDeliveryChallan = async (req: Request, res: Response) => {
 
             currentY += rowHeight;
             slNo++;
+        }
+
+        // --- ACCESSORIES ROWS ---
+        if (accessories && Array.isArray(accessories) && accessories.length > 0) {
+            for (const acc of accessories) {
+                if (!acc.name || !acc.name.trim()) continue;
+
+                const lineHeight = 12;
+                const rowHeight = lineHeight + 20;
+
+                // CHECK PAGE BREAK
+                if (currentY + rowHeight > bottomLimit) {
+                    doc.rect(startX, tableTopY, pageWidth, currentY - tableTopY).stroke();
+                    doc.moveTo(colX.desc, tableTopY).lineTo(colX.desc, currentY).stroke();
+                    doc.moveTo(colX.qty, tableTopY).lineTo(colX.qty, currentY).stroke();
+                    doc.moveTo(colX.rate, tableTopY).lineTo(colX.rate, currentY).stroke();
+                    doc.moveTo(colX.remarks, tableTopY).lineTo(colX.remarks, currentY).stroke();
+
+                    doc.addPage();
+                    currentY = startY + 20;
+                    drawTableHeader(currentY);
+                    currentY += headerHeight;
+                    tableTopY = currentY;
+                    doc.font('Helvetica').fontSize(9);
+                }
+
+                // Draw SL
+                doc.text(String(slNo), colX.sl + 5, currentY + 5);
+                doc.font('Helvetica-Bold').text(acc.name.trim(), colX.desc + 5, currentY + 5, { width: colWidths.desc - 10 });
+                doc.font('Helvetica');
+                doc.text(String(acc.quantity || 1), colX.qty + 5, currentY + 5, { align: 'center', width: colWidths.qty - 10 });
+
+                let remarkText = challanRemark || (isReturn ? 'Return' : 'For Rent');
+                doc.text(remarkText, colX.remarks + 5, currentY + 5);
+
+                doc.moveTo(startX, currentY + rowHeight).lineTo(startX + pageWidth, currentY + rowHeight).stroke();
+
+                currentY += rowHeight;
+                slNo++;
+            }
         }
 
         // Fill empty space logic
@@ -776,7 +808,7 @@ export const updateChallan = async (req: Request, res: Response) => {
         let deliveryAt: string = '';
 
         if (isReturn) {
-            title = isReplace ? 'REPLACE RETURN CHALLAN' : 'RETURN CHALLAN';
+            title = isReplace ? 'REPLACEMENT DELIVERY CHALLAN' : 'RETURN CHALLAN';
             sender = {
                 name: clientDetails.name,
                 address: clientDetails.fullAddressLines.join('\n'),
@@ -789,7 +821,7 @@ export const updateChallan = async (req: Request, res: Response) => {
             };
             deliveryAt = '';
         } else {
-            title = isReplace ? 'REPLACE DELIVERY CHALLAN' : 'DELIVERY CHALLAN';
+            title = isReplace ? 'REPLACEMENT DELIVERY CHALLAN' : 'DELIVERY CHALLAN';
             sender = {
                 name: pyramidDetails.name,
                 address: pyramidDetails.address,

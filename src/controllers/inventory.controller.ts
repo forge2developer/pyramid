@@ -9,17 +9,20 @@ export interface Laptop {
   processor_brand: string;
   processor_model: string;
   generation: string;
-  ramID: string;
-  storageType: string;
-  storageSize: string;
-  service_id: number;
-  brand_id: number;
-  company_id: number | null;
+  service_id: string; // Updated to string based on SQL schema
+  CompanyID: number | null;
   date_of_purchase: string;
   adapter: string;
-  company_name: string | null;
-  customer_name: string | null;
-  phone: string | null;
+  ramID: number | null;
+  graphicscardID: number | null;
+  ssdID: string | null;
+  nvmeID: string | null;
+  m2ID: string | null;
+  inventoryID: number | null;
+  phyramidID: string | null;
+  isAvailable: number;
+  isActive: number;
+  replacement_status: 'none' | 'pending' | 'completed';
 }
 
 export interface Company {
@@ -125,6 +128,14 @@ export const getAllLaptops = async (
       filterConditions.push("service_id = ?");
       filterValues.push(service_id);
     }
+    if (req.body.pyramidID) {
+      filterConditions.push("phyramidID LIKE ?");
+      filterValues.push(`%${req.body.pyramidID}%`);
+    }
+    if (req.body.generation) {
+      filterConditions.push("generation LIKE ?");
+      filterValues.push(`%${req.body.generation}%`);
+    }
 
     // Build WHERE clause
     let whereClause = "isActive = 1";
@@ -135,20 +146,18 @@ export const getAllLaptops = async (
       whereClause += " AND " + filterConditions.join(" AND ");
     }
 
-    // Get total count with same filters
+    // Queries
     const countQuery = `SELECT COUNT(*) as total FROM laptop WHERE ${whereClause}`;
-    const [countResult] = await pool.execute<any[]>(countQuery, filterValues);
+    const filteredQuery = `SELECT * FROM laptop WHERE ${whereClause} LIMIT ? OFFSET ?`;
+
+    // Execute queries in parallel
+    const [[countResult], [rows]] = await Promise.all([
+      pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit.toString(), offset.toString()])
+    ]);
+
     const total = countResult[0].total;
 
-    // Get laptops with pagination
-    const query = `SELECT * FROM laptop WHERE ${whereClause} LIMIT ? OFFSET ?`;
-
-    const [rows] = await pool.execute<any[]>(query, [...filterValues, limit.toString(), offset.toString()]);
-
-    const [data] = await pool.execute<any[]>(
-      `SELECT * from laptop LIMIT ? OFFSET ?`,
-      [limit.toString(), offset.toString()]
-    );
     res.json({
       success: true,
       data: {
@@ -159,7 +168,6 @@ export const getAllLaptops = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: data,
       },
     });
   } catch (error) {
@@ -237,21 +245,13 @@ export const getAllMonitors = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM monitor
-      LIMIT ? OFFSET ?
-    `;
-
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -266,7 +266,6 @@ export const getAllMonitors = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData
       }
     });
 
@@ -288,7 +287,7 @@ export const getAllRam = async (
     const {
       brand,
       size,
-      pyramid_id,
+      phyramidID,
       service_id,
       type,
       inventoryID,
@@ -307,9 +306,9 @@ export const getAllRam = async (
       filterConditions.push("size LIKE ?");
       filterValues.push(`%${size}%`);
     }
-    if (pyramid_id) {
-      filterConditions.push("pyramid_id = ?");
-      filterValues.push(pyramid_id);
+    if (phyramidID) {
+      filterConditions.push("phyramidID = ?");
+      filterValues.push(phyramidID);
     }
     if (service_id) {
       filterConditions.push("service_id = ?");
@@ -375,12 +374,10 @@ export const getAllRam = async (
     // 🔥 Parallel execution
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(dataQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(dataQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -395,7 +392,6 @@ export const getAllRam = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData
       }
     });
 
@@ -448,6 +444,10 @@ export const getAllSSD = async (
       filterConditions.push("inventoryID = ?");
       filterValues.push(inventoryID);
     }
+    if (req.body.phyramidID) {
+      filterConditions.push("phyramidID LIKE ?");
+      filterValues.push(`%${req.body.phyramidID}%`);
+    }
     // Parent Device Filters
     if (req.body.MobileWorkstationID) {
       filterConditions.push("MobileWorkstationID = ?");
@@ -488,21 +488,13 @@ export const getAllSSD = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM ssd
-      LIMIT ? OFFSET ?
-    `;
-
     // 🔥 Execute queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -517,7 +509,6 @@ export const getAllSSD = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -540,7 +531,6 @@ export const getAllNVMe = async (
     const {
       serialNumber,
       brand,
-      deliveryCompany,
       Size,
       serviceTag,
       inventoryID,
@@ -558,10 +548,6 @@ export const getAllNVMe = async (
     if (brand) {
       filterConditions.push("brand LIKE ?");
       filterValues.push(`%${brand}%`);
-    }
-    if (deliveryCompany) {
-      filterConditions.push("deliveryComany LIKE ?");
-      filterValues.push(`%${deliveryCompany}%`);
     }
     if (Size) {
       filterConditions.push("Size LIKE ?");
@@ -592,6 +578,10 @@ export const getAllNVMe = async (
       filterConditions.push("laptopID = ?");
       filterValues.push(req.body.LaptopID);
     }
+    if (req.body.phyramidID) {
+      filterConditions.push("phyramidID LIKE ?");
+      filterValues.push(`%${req.body.phyramidID}%`);
+    }
     // WHERE clause
     let whereClause = "isActive = 1";
 
@@ -617,21 +607,13 @@ export const getAllNVMe = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM nvme
-      LIMIT ? OFFSET ?
-    `;
-
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -646,7 +628,6 @@ export const getAllNVMe = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -687,6 +668,10 @@ export const getAllHDD = async (
       filterConditions.push("inventoryID = ?");
       filterValues.push(inventoryID);
     }
+    if (req.body.phyramidID) {
+      filterConditions.push("phyramidID LIKE ?");
+      filterValues.push(`%${req.body.phyramidID}%`);
+    }
     if (brand) {
       filterConditions.push("brand LIKE ?");
       filterValues.push(`%${brand}%`);
@@ -723,21 +708,13 @@ export const getAllHDD = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM hdd
-      LIMIT ? OFFSET ?
-    `;
-
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -752,7 +729,6 @@ export const getAllHDD = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -779,6 +755,7 @@ export const getAllGraphicsCard = async (
       size,
       inventoryID,
       isAvailable,
+      generation,
     } = req.body;
 
     // Build dynamic filters
@@ -797,6 +774,10 @@ export const getAllGraphicsCard = async (
       filterConditions.push("inventoryID = ?");
       filterValues.push(inventoryID);
     }
+    if (req.body.phyramidID) {
+      filterConditions.push("phyramidID LIKE ?");
+      filterValues.push(`%${req.body.phyramidID}%`);
+    }
     if (brand) {
       filterConditions.push("brand LIKE ?");
       filterValues.push(`%${brand}%`);
@@ -808,6 +789,10 @@ export const getAllGraphicsCard = async (
     if (size) {
       filterConditions.push("size LIKE ?");
       filterValues.push(`%${size}%`);
+    }
+    if (generation) {
+      filterConditions.push("generation LIKE ?");
+      filterValues.push(`%${generation}%`);
     }
     // Parent Device Filters
     if (req.body.MobileWorkstationID) {
@@ -838,33 +823,25 @@ export const getAllGraphicsCard = async (
 
     // Queries
     const countQuery = `
-      SELECT COUNT(*) AS total
-      FROM graphicscard
-      WHERE ${whereClause}
-    `;
+          SELECT COUNT(*) AS total
+          FROM graphicscard
+          WHERE ${whereClause}
+        `;
 
     const filteredQuery = `
-      SELECT *
-      FROM graphicscard
-      WHERE ${whereClause}
-      LIMIT ? OFFSET ?
-    `;
-
-    const allDataQuery = `
-      SELECT *
-      FROM graphicscard
-      LIMIT ? OFFSET ?
-    `;
+          SELECT *
+          FROM graphicscard
+          WHERE ${whereClause}
+          LIMIT ? OFFSET ?
+        `;
 
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -879,7 +856,6 @@ export const getAllGraphicsCard = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -904,7 +880,6 @@ export const getAllWorkstation = async (
       Processor,
       Generation,
       serviceID,
-      deliveryCompany,
       pyramidsID,
       inventoryID,
       isAvailable,
@@ -934,10 +909,6 @@ export const getAllWorkstation = async (
       filterConditions.push("serviceID LIKE ?");
       filterValues.push(`%${serviceID}%`);
     }
-    if (deliveryCompany) {
-      filterConditions.push("deliveryCompany LIKE ?");
-      filterValues.push(`%${deliveryCompany}%`);
-    }
     if (pyramidsID) {
       filterConditions.push("pyramidsID = ?");
       filterValues.push(pyramidsID);
@@ -966,21 +937,13 @@ export const getAllWorkstation = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM workstation
-      LIMIT ? OFFSET ?
-    `;
-
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -995,7 +958,6 @@ export const getAllWorkstation = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -1103,21 +1065,13 @@ export const getAllMobileWorkstation = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM mobileworkstation
-      LIMIT ? OFFSET ?
-    `;
-
     //  Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -1132,7 +1086,6 @@ export const getAllMobileWorkstation = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -1214,21 +1167,13 @@ export const getAllSystem = async (
       LIMIT ? OFFSET ?
     `;
 
-    const allDataQuery = `
-      SELECT *
-      FROM system
-      LIMIT ? OFFSET ?
-    `;
-
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
-      [rows],
-      [allData]
+      [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
-      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset]),
-      pool.execute<any[]>(allDataQuery, [limit, offset])
+      pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
     const total = countResult[0].total;
@@ -1243,7 +1188,6 @@ export const getAllSystem = async (
           totalItems: total,
           itemsPerPage: limit,
         },
-        data: allData,
       },
     });
 
@@ -1277,8 +1221,6 @@ export const getInventoryFilter = async (
         l.adapter,
         l.ramID,
         l.graphicscardID,
-        l.storageType,
-        l.storageSize,
         l.inventoryID,
         l.phyramidID,
         l.isAvailable,
@@ -1396,8 +1338,6 @@ export const addLaptopNew = async (
         processor_brand,
         processor_model,
         generation,
-        storageType,
-        storageSize,
         service_id,
         company_id,
         phyramidID,
@@ -1408,11 +1348,15 @@ export const addLaptopNew = async (
 
       // Support both array (ramIDs) and single (ramID) for backward compatibility
       const ramIDList = Array.isArray(laptop.ramIDs) ? laptop.ramIDs : (laptop.ramID ? [laptop.ramID] : []);
+      const ssdIDList = Array.isArray(laptop.ssdIDs) ? laptop.ssdIDs : (laptop.ssdID ? [laptop.ssdID] : []);
+      const nvmeIDList = Array.isArray(laptop.nvmeIDs) ? laptop.nvmeIDs : (laptop.nvmeID ? [laptop.nvmeID] : []);
+      const m2IDList = Array.isArray(laptop.m2IDs) ? laptop.m2IDs : (laptop.m2ID ? [laptop.m2ID] : []);
+      const gpuIDList = Array.isArray(laptop.graphicscardIDs) ? laptop.graphicscardIDs : (laptop.graphicscardID ? [laptop.graphicscardID] : []);
 
       const [result] = await pool.execute<any>(
         `INSERT INTO laptop 
-          (brand, model, processor_brand, processor_model, generation, ramID, storageType, storageSize, service_id, CompanyID, phyramidID, date_of_purchase, adapter, inventoryID) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (brand, model, processor_brand, processor_model, generation, ramID, graphicscardID, ssdID, nvmeID, m2ID, service_id, CompanyID, phyramidID, date_of_purchase, adapter, inventoryID) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           brand,
           model,
@@ -1420,8 +1364,10 @@ export const addLaptopNew = async (
           processor_model || null,
           generation || null,
           ramIDList[0] || null,
-          storageType || null,
-          storageSize || null,
+          gpuIDList[0] || null,
+          ssdIDList[0] || null,
+          nvmeIDList[0] || null,
+          m2IDList[0] || null,
           service_id || null,
           company_id || null,
           phyramidID || null,
@@ -1431,55 +1377,60 @@ export const addLaptopNew = async (
         ]
       );
 
-      // Update RAM Allocation (all selected RAMs)
+      const laptopId = result.insertId;
+
+      // Update Component Allocation - Link back to Laptop
+      // 1. RAM (all selected)
       for (const rid of ramIDList) {
         if (rid) {
           await pool.execute(
             `UPDATE ram SET laptopID = ?, isAvailable = 0 WHERE id = ?`,
-            [result.insertId, rid]
+            [laptopId, rid]
           );
         }
       }
 
-      // Update Storage Allocation (Type and Size provided)
-      if (storageType && storageSize) {
-        const type = storageType.trim().toLowerCase();
-        let table = "";
-        let sizeCol = "";
-        let idCol = "";
-
-        if (type === 'ssd') {
-          table = 'ssd';
-          sizeCol = 'ssdSize';
-          idCol = 'ssdID';
-        } else if (type === 'nvme') {
-          table = 'nvme';
-          sizeCol = 'Size';
-          idCol = 'ID';
-        } else if (type === 'm.2') {
-          table = 'm_2';
-          sizeCol = 'size';
-          idCol = 'id';
-        }
-
-        if (table) {
-          // Find ONE available item of this size
-          const [available] = await pool.query<RowDataPacket[]>(
-            `SELECT ${idCol} FROM ${table} WHERE ${sizeCol} = ? AND (isAvailable = 1 OR isAvailable = '1') LIMIT 1`,
-            [storageSize]
+      // 2. SSD (all selected)
+      for (const sid of ssdIDList) {
+        if (sid) {
+          await pool.execute(
+            `UPDATE ssd SET laptopID = ?, isAvailable = 0, CompanyID = ? WHERE ssdID = ?`,
+            [laptopId, company_id || null, sid]
           );
-
-          if (available.length > 0) {
-            const compId = available[0][idCol];
-            await pool.execute(
-              `UPDATE ${table} SET laptopID = ?, isAvailable = 0 WHERE ${idCol} = ?`,
-              [result.insertId, compId]
-            );
-          }
         }
       }
 
-      return result.insertId;
+      // 3. NVMe (all selected)
+      for (const nid of nvmeIDList) {
+        if (nid) {
+          await pool.execute(
+            `UPDATE nvme SET laptopID = ?, isAvailable = 0, CompanyID = ? WHERE ID = ?`,
+            [laptopId, company_id || null, nid]
+          );
+        }
+      }
+
+      // 4. M.2 (all selected)
+      for (const mid of m2IDList) {
+        if (mid) {
+          await pool.execute(
+            `UPDATE m_2 SET laptopID = ?, isAvailable = 0, CompanyID = ? WHERE id = ?`,
+            [laptopId, company_id || null, mid]
+          );
+        }
+      }
+
+      // 5. Graphics Card (all selected)
+      for (const gid of gpuIDList) {
+        if (gid) {
+          await pool.execute(
+            `UPDATE graphicscard SET laptopID = ?, isAvailable = 0, CompanyID = ? WHERE id = ?`,
+            [laptopId, company_id || null, gid]
+          );
+        }
+      }
+
+      return laptopId;
     });
 
     const results = await Promise.all(insertPromises);
@@ -1518,7 +1469,7 @@ export const addRam = async (
     }
 
     // Check for duplicate Pyramid IDs
-    const pyramidIDs = items.map((i: any) => i.pyramid_id).filter((id: any) => id);
+    const pyramidIDs = items.map((i: any) => i.phyramidID).filter((id: any) => id);
 
     if (pyramidIDs.length > 0) {
       const [existingPyramids] = await pool.execute<any>(
@@ -1636,7 +1587,6 @@ export const addSSD = async (
         brand,
         SerialNumber,
         dateOfPurchase,
-        deliveryCompany,
         serviceTag,
         speed,
         ssdSize,
@@ -1647,7 +1597,7 @@ export const addSSD = async (
 
 
       const [result] = await pool.execute<any>(
-        `INSERT INTO ssd (brand, ssdSize, speed, SerialNumber, serviceTag, warrantyEndDate, dateOfPurchase, deliveryCompany, phyramidID, inventoryID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO ssd (brand, ssdSize, speed, SerialNumber, serviceTag, warrantyEndDate, dateOfPurchase, phyramidID, inventoryID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           brand,
           ssdSize || null,
@@ -1656,7 +1606,6 @@ export const addSSD = async (
           serviceTag || null,
           warrantyEndDate || null,
           dateOfPurchase || null,
-          deliveryCompany || null,
           phyramidID || null,
           item.inventoryID || null,
         ]
@@ -1739,7 +1688,6 @@ export const addNVMe = async (
         brand,
         serialNumber,
         dateOfPurchase,
-        deliveryCompany,
         serviceTag,
         speed,
         Size,
@@ -1748,7 +1696,7 @@ export const addNVMe = async (
       } = item;
 
       const [result] = await pool.execute<any>(
-        `INSERT INTO nvme(brand, Size, speed, serialNumber, serviceTag, warrantyEndDate, dateOfPurchase, deliveryCompany, phyramidID, inventoryID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO nvme(brand, Size, speed, serialNumber, serviceTag, warrantyEndDate, dateOfPurchase, phyramidID, inventoryID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           brand,
           Size || null,
@@ -1757,7 +1705,6 @@ export const addNVMe = async (
           serviceTag || null,
           warrantyEndDate || null,
           dateOfPurchase || null,
-          deliveryCompany || null,
           phyramidID || null,
           item.inventoryID || null,
         ]
@@ -1832,7 +1779,6 @@ export const addHDD = async (
         brand,
         serialNumber,
         dateOfPurchase,
-        deliveryCompany,
         serviceTag,
         speed,
         size,
@@ -1841,7 +1787,7 @@ export const addHDD = async (
       } = item;
 
       const [result] = await pool.execute<any>(
-        `INSERT INTO hdd(brand, speed, serialNumber, serviceTag, warrantyEndData, dateOfPurchase, deliveryCompany, size, phyramidID, inventoryID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO hdd(brand, speed, serialNumber, serviceTag, warrantyEndData, dateOfPurchase, size, phyramidID, inventoryID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           brand,
           speed || null,
@@ -1849,7 +1795,6 @@ export const addHDD = async (
           serviceTag || null,
           warrantyEndDate || null,
           dateOfPurchase || null,
-          deliveryCompany || null,
           size || null,
           phyramidID || null,
           item.inventoryID || null,
@@ -1959,8 +1904,9 @@ export const addDesktop = async (
     const items = Array.isArray(req.body) ? req.body : [req.body];
 
     for (const item of items) {
-      if (!item.Name || !item.Processor) {
-        const error: AppError = new Error("Name and Processor are required for all items");
+      const name = item.Name || item.Brand || item.brand;
+      if (!name || !item.Processor) {
+        const error: AppError = new Error("Brand/Name and Processor are required for all items");
         error.statusCode = 400;
         throw error;
       }
@@ -1986,13 +1932,16 @@ export const addDesktop = async (
     const insertPromises = items.map(async (item: any) => {
       const {
         Name,
+        Brand,
+        brand,
         Processor,
         Generation,
         serviceID,
         pyramidsID,
         dateOfPurchase,
-        deliveryCompany,
       } = item;
+
+      const dbName = Name || Brand || brand;
 
       // Support both array (ramIDs) and single (ramID) for backward compatibility
       const ramIDList = Array.isArray(item.ramIDs) ? item.ramIDs : (item.ramID ? [item.ramID] : []);
@@ -2002,9 +1951,9 @@ export const addDesktop = async (
       const gpuIDList = Array.isArray(item.graphicscardIDs) ? item.graphicscardIDs : (item.graphicscardID ? [item.graphicscardID] : []);
 
       const [result] = await pool.execute<any>(
-        `INSERT INTO system(Name, Processor, Generation, serviceID, pyramidsID, ramID, ssdID, nvmeID, m2ID, graphicscardID, dateOfPurchase, deliveryCompany, inventoryID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO system(Name, Processor, Generation, serviceID, pyramidsID, ramID, ssdID, nvmeID, m2ID, graphicscardID, dateOfPurchase, inventoryID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          Name,
+          dbName,
           Processor,
           Generation || null,
           serviceID || null,
@@ -2015,7 +1964,6 @@ export const addDesktop = async (
           m2IDList[0] || null,
           gpuIDList[0] || null,
           dateOfPurchase || null,
-          deliveryCompany || null,
           item.inventoryID || null,
         ]
       );
@@ -2101,8 +2049,9 @@ export const addWorkstation = async (
     const items = Array.isArray(req.body) ? req.body : [req.body];
 
     for (const item of items) {
-      if (!item.Name || !item.Processor) {
-        const error: AppError = new Error("Name and Processor are required for all items");
+      const name = item.Name || item.Brand || item.brand;
+      if (!name || !item.Processor) {
+        const error: AppError = new Error("Brand/Name and Processor are required for all items");
         error.statusCode = 400;
         throw error;
       }
@@ -2128,13 +2077,16 @@ export const addWorkstation = async (
     const insertPromises = items.map(async (item: any) => {
       const {
         Name,
+        Brand,
+        brand,
         Processor,
-        Generation,
+        generation,
         serviceID,
         pyramidsID,
         dateOfPurchase,
-        deliveryCompany,
       } = item;
+
+      const dbName = Name || Brand || brand;
 
       // Support both array (ramIDs) and single (ramID) for backward compatibility
       const ramIDList = Array.isArray(item.ramIDs) ? item.ramIDs : (item.ramID ? [item.ramID] : []);
@@ -2144,11 +2096,11 @@ export const addWorkstation = async (
       const gpuIDList = Array.isArray(item.graphicscardIDs) ? item.graphicscardIDs : (item.graphicscardID ? [item.graphicscardID] : []);
 
       const [result] = await pool.execute<any>(
-        `INSERT INTO workstation(Name, Processor, generation, serviceID, pyramidsID, ramID, ssdID, nvmeID, m2ID, graphicscardID, dateOfPurchase, deliveryCompany, inventoryID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO workstation(Name, Processor, generation, serviceID, pyramidsID, ramID, ssdID, nvmeID, m2ID, graphicscardID, dateOfPurchase, inventoryID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          Name,
+          dbName,
           Processor,
-          Generation || null,
+          generation || null,
           serviceID || null,
           pyramidsID || null,
           ramIDList[0] || null,
@@ -2157,7 +2109,6 @@ export const addWorkstation = async (
           m2IDList[0] || null,
           gpuIDList[0] || null,
           dateOfPurchase || null,
-          deliveryCompany || null,
           item.inventoryID || null,
         ]
       );
@@ -2293,7 +2244,7 @@ export const addMobileWorkstation = async (
         service_id,
         phyramidID,
         CompanyID,
-        dateOfPurchase, // Frontend sends camelCase, map to snake_case or check schema column name?
+        date_of_purchase, // Frontend sends camelCase, map to snake_case or check schema column name?
         // Schema says `date_of_purchase`. Old code used `dateOfPurchase` column?
         // Let's check old code: `INSERT INTO mobileworkstation(... dateOfPurchase ...)`. 
         // So OLD column was camelCase. User schema says `date_of_purchase`.
@@ -2334,7 +2285,7 @@ export const addMobileWorkstation = async (
           service_id || null,
           phyramidID || null,
           CompanyID || null,
-          dateOfPurchase || null,
+          date_of_purchase || null,
           adapter || null,
           primaryRamID || null,
           graphicscardID || null,
@@ -2430,7 +2381,6 @@ export const addGraphicsCard = async (
       const {
         brand,
         dateOfPurchase,
-        deliveryCompany,
         generation,
         model,
         serviceNumber,
@@ -2441,7 +2391,7 @@ export const addGraphicsCard = async (
       } = item;
 
       const [result] = await pool.execute<any>(
-        `INSERT INTO  graphicscard(brand, model, size, generation, serviceNumber, serviceTag, warrantyEndDate, dateOfPurchase, deliveryCompany, inventoryID, phyramidID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO  graphicscard(brand, model, size, generation, serviceNumber, serviceTag, warrantyEndDate, dateOfPurchase, inventoryID, phyramidID)VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           brand || null,
           model || null,
@@ -2451,7 +2401,6 @@ export const addGraphicsCard = async (
           serviceTag || null,
           warrantyEndDate || null,
           dateOfPurchase || null,
-          deliveryCompany || null,
           item.inventoryID || null,
           phyramidID || null,
         ]
@@ -2676,8 +2625,10 @@ export const updateLaptop = async (
       processor_model,
       generation,
       ramID,
-      storageType,
-      storageSize,
+      graphicscardID,
+      ssdID,
+      nvmeID,
+      m2ID,
       phyramidID,
       inventoryID,
       CompanyID,
@@ -2690,6 +2641,8 @@ export const updateLaptop = async (
       removeNvme,
       addM2,
       removeM2,
+      addGraphicsCard,
+      removeGraphicsCard,
     } = req.body;
 
     console.log('nova', req.body);
@@ -2701,7 +2654,7 @@ export const updateLaptop = async (
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE laptop SET brand = ?, model = ?, processor_brand = ?, processor_model = ?, generation = ?, ramID = ?, storageType = ?, storageSize = ?, service_id = ?, CompanyID = ?, phyramidID = ?, date_of_purchase = ?, adapter = ?, inventoryID = ? WHERE id = ?`,
+      `UPDATE laptop SET brand = ?, model = ?, processor_brand = ?, processor_model = ?, generation = ?, ramID = ?, graphicscardID = ?, ssdID = ?, nvmeID = ?, m2ID = ?, service_id = ?, CompanyID = ?, phyramidID = ?, date_of_purchase = ?, adapter = ?, inventoryID = ? WHERE id = ?`,
       [
         brand,
         model,
@@ -2709,8 +2662,10 @@ export const updateLaptop = async (
         processor_model || null,
         generation || null,
         ramID || null,
-        storageType || null,
-        storageSize || null,
+        graphicscardID || null,
+        ssdID || null,
+        nvmeID || null,
+        m2ID || null,
         service_id || null,
         CompanyID || null,
         phyramidID || null,
@@ -2728,7 +2683,6 @@ export const updateLaptop = async (
     if (Array.isArray(addRam)) {
       addRam.forEach((ram: any) => {
         const ramId = ram.id || ram.ID || ram.ramID;
-        // Check if ramId is valid to avoid updating all rows if undefined (though unlikely with strict null checks)
         if (ramId) {
           promises.push(pool.execute(
             `UPDATE ram SET laptopID = ?, isAvailable = 0, CompanyID = ? WHERE id = ?`,
@@ -2821,19 +2775,44 @@ export const updateLaptop = async (
       });
     }
 
+    // 5. Graphics Card Updates
+    if (Array.isArray(addGraphicsCard)) {
+      addGraphicsCard.forEach((gpu: any) => {
+        const gpuId = gpu.id || gpu.ID || gpu.graphicscardID;
+        if (gpuId) {
+          promises.push(pool.execute(
+            `UPDATE graphicscard SET laptopID = ?, isAvailable = 0, CompanyID = ? WHERE id = ?`,
+            [id, req.body.CompanyID || null, gpuId]
+          ));
+        }
+      });
+    }
+    if (Array.isArray(removeGraphicsCard)) {
+      removeGraphicsCard.forEach((gpu: any) => {
+        const gpuId = gpu.id || gpu.ID || gpu.graphicscardID;
+        if (gpuId) {
+          promises.push(pool.execute(
+            `UPDATE graphicscard SET laptopID = NULL, isAvailable = 1, CompanyID = NULL WHERE id = ?`,
+            [gpuId]
+          ));
+        }
+      });
+    }
+
     await Promise.all(promises);
 
     res.status(201).json({
       success: true,
       message: "Laptop updated successfully",
       data: {
-        id: result.insertId,
+        id: id,
       },
     });
   } catch (error) {
     next(error);
   }
 };
+
 // Update monitor
 export const updateMonitor = async (
   req: Request,
@@ -2851,6 +2830,7 @@ export const updateMonitor = async (
       size,
       warranty_date,
       date_of_purchase,
+      inventoryID,
       id,
     } = req.body;
 
@@ -2862,16 +2842,21 @@ export const updateMonitor = async (
       throw error;
     }
 
+    // Format dates if provided
+    const formattedWarrantyDate = warranty_date ? new Date(warranty_date).toISOString().split('T')[0] : null;
+    const formattedPurchaseDate = date_of_purchase ? new Date(date_of_purchase).toISOString().split('T')[0] : null;
+
     const [result] = await pool.execute<any>(
-      `UPDATE monitor  SET display = ?, name = ?, pyramid_id = ?, service_tag = ?, size = ?, warranty_date = ?, date_of_purchase = ? WHERE id = ?`,
+      `UPDATE monitor  SET display = ?, name = ?, pyramid_id = ?, service_tag = ?, size = ?, warranty_date = ?, date_of_purchase = ?, inventoryID = ? WHERE id = ?`,
       [
         display,
         name,
         pyramid_id,
         service_tag,
         size,
-        warranty_date,
-        date_of_purchase,
+        formattedWarrantyDate,
+        formattedPurchaseDate,
+        inventoryID || null,
         id,
       ]
     );
@@ -2901,34 +2886,34 @@ export const updateNvme = async (
       Size,
       brand,
       dateOfPurchase,
-      deliveryComany,
       serialNumber,
       serviceTag,
       speed,
       warrantyEndDate,
+      phyramidID,
       id,
     } = req.body;
 
     console.log('nova', req.body);
     // Validate required fields
-    if (!brand || !deliveryComany) {
-      const error: AppError = new Error("Brand and model are required");
+    if (!brand) {
+      const error: AppError = new Error("Brand is required");
       error.statusCode = 400;
       throw error;
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE nvme SET Size = ?, brand = ?, dateOfPurchase = ?, deliveryComany = ?, serialNumber = ?, serviceTag = ?, speed = ?, warrantyEndDate = ? WHERE id = ?`,
+      `UPDATE nvme SET Size = ?, brand = ?, dateOfPurchase = ?, serialNumber = ?, serviceTag = ?, speed = ?, warrantyEndDate = ?, phyramidID = ? WHERE id = ?`,
       [
-        Size,
-        brand,
-        dateOfPurchase,
-        deliveryComany,
-        serialNumber,
-        serviceTag,
-        speed,
-        warrantyEndDate,
-        id,
+        Size || null,
+        brand || null, // Should not be null due to validation but safe to default
+        dateOfPurchase || null,
+        serialNumber || null,
+        serviceTag || null,
+        speed || null,
+        warrantyEndDate || null,
+        phyramidID || null,
+        id || req.body.ID, // Handle both id and ID
       ]
     );
 
@@ -2954,15 +2939,16 @@ export const editRam = async (
 
   try {
     const {
-      DesktopID,
+      systemID,
       WorkstationID,
       brand,
       date_of_purchase,
       form_factor,
-      pyramid_id,
+      phyramidID,
       service_id,
       size,
       type,
+      inventoryID,
       id,
     } = req.body;
 
@@ -2975,17 +2961,18 @@ export const editRam = async (
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE ram SET DesktopID = ?, WorkstationID = ?, brand = ?, date_of_purchase = ?, form_factor = ?, pyramid_id = ?, service_id = ?, size = ?, type = ? WHERE id = ?`,
+      `UPDATE ram SET systemID = ?, WorkstationID = ?, brand = ?, date_of_purchase = ?, form_factor = ?, phyramidID = ?, service_id = ?, size = ?, type = ?, inventoryID = ? WHERE id = ?`,
       [
-        DesktopID,
-        WorkstationID,
-        brand,
-        date_of_purchase,
-        form_factor,
-        pyramid_id,
-        service_id,
-        size,
-        type,
+        systemID ?? null,
+        WorkstationID ?? null,
+        brand ?? null,
+        date_of_purchase ?? null,
+        form_factor ?? null,
+        phyramidID ?? null,
+        service_id ?? null,
+        size ?? null,
+        type ?? null,
+        inventoryID ?? null,
         id,
       ]
     );
@@ -3011,11 +2998,11 @@ export const updateSystem = async (
 
   try {
     const {
+      Brand,
       Name,
       Processor,
       generation,
       dateOfPurchase,
-      deliveryCompany,
       ramID,
       ssdID,
       nvmeID,
@@ -3039,8 +3026,9 @@ export const updateSystem = async (
 
     console.log('nova', req.body);
     // Validate required fields
-    if (!Name || !Processor) {
-      const error: AppError = new Error("Name and Processor are required");
+    const systemName = Brand || Name;
+    if (!systemName || !Processor) {
+      const error: AppError = new Error("Brand and Processor are required");
       error.statusCode = 400;
       throw error;
     }
@@ -3049,13 +3037,12 @@ export const updateSystem = async (
 
     // 1. Update System Details
     const systemUpdatePromise = pool.execute<any>(
-      `UPDATE system SET Name = ?, Processor = ?, Generation = ?, dateOfPurchase = ?, deliveryCompany = ?, ramID = ?, ssdID = ?, nvmeID = ?, m2ID = ?, pyramidsID = ?, serviceID = ?, inventoryID = ? WHERE systemID = ?`,
+      `UPDATE system SET Name = ?, Processor = ?, Generation = ?, dateOfPurchase = ?, ramID = ?, ssdID = ?, nvmeID = ?, m2ID = ?, pyramidsID = ?, serviceID = ?, inventoryID = ? WHERE systemID = ?`,
       [
-        Name || null,
+        Brand || Name || null,
         Processor || null,
         generation || null,
         dateOfPurchase || null,
-        deliveryCompany || null,
         ramID || null,
         ssdID || null,
         nvmeID || null,
@@ -3225,7 +3212,7 @@ export const getLaptopHistory = async (
        FROM activity_logs al
        LEFT JOIN company c ON al.CompanyID = c.id
        LEFT JOIN users u ON al.userID = u.id
-       WHERE al.productId = ?
+       WHERE al.productId = ? AND (al.product = 'laptop' OR al.product = 'Laptop' OR al.product = 'LAPTOP')
        ORDER BY al.data DESC`,
       [id]
     );
@@ -3263,7 +3250,7 @@ export const getRamHistory = async (
       `SELECT r.*, 
         l.brand as laptop_brand, l.model as laptop_model,
         s.Name as system_name, s.Processor as system_processor,
-        w.processor as workstation_processor, w.configuration as workstation_config
+        w.Processor as workstation_processor
        FROM ram r 
        LEFT JOIN laptop l ON r.laptopID = l.id
        LEFT JOIN system s ON r.systemID = s.systemID 
@@ -3286,7 +3273,7 @@ export const getRamHistory = async (
        FROM activity_logs al
        LEFT JOIN company c ON al.CompanyID = c.id
        LEFT JOIN users u ON al.userID = u.id
-       WHERE al.productId = ? AND al.product = 'ram'
+       WHERE al.productId = ? AND (al.product = 'ram' OR al.product = 'RAM' OR al.product = 'Ram')
        ORDER BY al.data DESC`,
       [id]
     );
@@ -3376,7 +3363,11 @@ export const getSystemHistory = async (
 
     // 1. Get System Details
     const [systems] = await pool.execute<any[]>(
-      `SELECT s.*, c.company_name, c.customer_name, c.phone as company_phone 
+      `SELECT s.*, c.company_name, c.customer_name, c.phone as company_phone,
+        (SELECT GROUP_CONCAT(CONCAT(r.size, ' ', r.brand) SEPARATOR ', ') FROM ram r WHERE r.systemID = s.systemID) AS ramCount,
+        (SELECT GROUP_CONCAT(CONCAT(ssd.ssdSize, ' ', ssd.brand) SEPARATOR ', ') FROM ssd WHERE ssd.systemID = s.systemID) AS ssdCount,
+        (SELECT GROUP_CONCAT(CONCAT(n.Size, ' ', n.brand) SEPARATOR ', ') FROM nvme n WHERE n.systemID = s.systemID) AS nvmeCount,
+        (SELECT GROUP_CONCAT(CONCAT(IFNULL(g.size, ''), ' ', IFNULL(g.brand, ''), ' ', IFNULL(g.model, '')) SEPARATOR ', ') FROM graphicscard g WHERE g.systemID = s.systemID) AS graphics
        FROM system s
        LEFT JOIN company c ON s.CompanyID = c.id 
        WHERE s.systemID = ?`,
@@ -3434,7 +3425,7 @@ export const getSSDHistory = async (
       `SELECT s.*, 
         l.brand as laptop_brand, l.model as laptop_model,
         sys.Name as system_name, sys.Processor as system_processor,
-        w.processor as workstation_processor, w.configuration as workstation_config
+        w.Processor as workstation_processor
        FROM ssd s
        LEFT JOIN laptop l ON s.laptopID = l.id
        LEFT JOIN system sys ON s.systemID = sys.systemID 
@@ -3495,7 +3486,7 @@ export const getNVMeHistory = async (
       `SELECT n.*, 
         l.brand as laptop_brand, l.model as laptop_model,
         sys.Name as system_name, sys.Processor as system_processor,
-        w.processor as workstation_processor, w.configuration as workstation_config
+        w.Processor as workstation_processor
        FROM nvme n
        LEFT JOIN laptop l ON n.laptopID = l.id
        LEFT JOIN system sys ON n.systemID = sys.systemID 
@@ -3517,7 +3508,7 @@ export const getNVMeHistory = async (
        FROM activity_logs al
        LEFT JOIN company c ON al.CompanyID = c.id
        LEFT JOIN users u ON al.userID = u.id
-       WHERE al.productId = ? AND al.product = 'nvme'
+        WHERE al.productId = ? AND (al.product = 'nvme' OR al.product = 'NVMe' OR al.product = 'Nvme')
        ORDER BY al.data DESC`,
       [id]
     );
@@ -3570,7 +3561,7 @@ export const getHDDHistory = async (
        FROM activity_logs al
        LEFT JOIN company c ON al.CompanyID = c.id
        LEFT JOIN users u ON al.userID = u.id
-       WHERE al.productId = ? AND al.product = 'hdd'
+        WHERE al.productId = ? AND (al.product = 'hdd' OR al.product = 'HDD' OR al.product = 'Hdd')
        ORDER BY al.data DESC`,
       [id]
     );
@@ -3643,6 +3634,356 @@ export const getGraphicsCardHistory = async (
   }
 };
 
+// Generate Graphics Card History PDF
+export const getGraphicsCardHistoryPDF = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, logType, cardDetails } = req.body;
+
+    if (!id) {
+      res.status(400).json({ success: false, message: "Graphics Card ID is required" });
+      return;
+    }
+
+    // Build filtered query
+    let query = `
+      SELECT al.*, u.name as user_name, c.company_name
+      FROM activity_logs al
+      LEFT JOIN company c ON al.CompanyID = c.id
+      LEFT JOIN users u ON al.userID = u.id
+      WHERE al.productId = ? AND (al.product = 'graphicscard' OR al.product = 'graphicsCard')
+    `;
+    const params: any[] = [id];
+
+    if (logType) {
+      query += ` AND al.log = ?`;
+      params.push(logType);
+    }
+    if (startDate) {
+      query += ` AND al.data >= ?`;
+      params.push(`${startDate} 00:00:00`);
+    }
+    if (endDate) {
+      query += ` AND al.data <= ?`;
+      params.push(`${endDate} 23:59:59`);
+    }
+
+    query += ` ORDER BY al.data DESC`;
+
+    const [logs] = await pool.execute<any[]>(query, params);
+
+    const PDFDocument = require("pdfkit");
+    const doc = new PDFDocument({ margin: 30, size: "A4" });
+    const filename = `GraphicsCard_History_${new Date().toISOString().split("T")[0]}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    doc.pipe(res);
+
+    // --- Logo & Branding ---
+    const logoPath = "src/assets/PhyramidLogo.png";
+    const pageWidth = 595;
+    const logoWidth = 50;
+    try {
+      doc.image(logoPath, (pageWidth / 2) - (logoWidth / 2), 30, { width: logoWidth });
+    } catch (err) {
+      console.error("Logo not found at", logoPath);
+    }
+    doc.font("Helvetica-Bold").fontSize(10).text("PYRAMID BUSINESS SYSTEMS", 30, 85, { align: "center", width: 535 });
+    doc.font("Helvetica-Bold").fontSize(16).text("GRAPHICS CARD ACTIVITY HISTORY", 30, 105, { align: "center", width: 535 });
+    doc.fontSize(9).font("Helvetica").text(`Generated on: ${new Date().toLocaleDateString()}`, 30, 125, { align: "center", width: 535 });
+
+    // --- Card Details ---
+    doc.moveDown(2);
+    const detailY = 150;
+    if (cardDetails) {
+      doc.font("Helvetica-Bold").fontSize(12).text(`${cardDetails.brand || ""} ${cardDetails.model || ""}`, 30, detailY);
+      doc.fontSize(9).font("Helvetica");
+      doc.text(`Size: ${cardDetails.size || "N/A"}  |  Generation: ${cardDetails.generation || "N/A"}  |  Service Number: ${cardDetails.serviceNumber || "N/A"}  |  Service Tag: ${cardDetails.serviceTag || "N/A"}`, 30, detailY + 16);
+    }
+
+    // --- Filter Info ---
+    doc.moveDown(1);
+    const filterY = detailY + 38;
+    const filterText = [
+      logType ? `Log Type: ${logType}` : "Log Type: All",
+      startDate ? `Start: ${startDate}` : null,
+      endDate ? `End: ${endDate}` : null,
+    ].filter(Boolean).join(" | ");
+    doc.font("Helvetica").fontSize(9).text(filterText, 30, filterY);
+
+    // --- Table with borders ---
+    doc.moveDown(1);
+    const tableTop = filterY + 20;
+    const colBounds = [30, 60, 140, 220, 330, 420, 565];
+
+    const snoX = colBounds[0] + 3;
+    const dateX = colBounds[1] + 3;
+    const eventX = colBounds[2] + 3;
+    const companyX = colBounds[3] + 3;
+    const userX = colBounds[4] + 3;
+    const reasonX = colBounds[5] + 3;
+
+    const drawRowGrid = (y: number, height: number, isHeader = false) => {
+      doc.lineWidth(isHeader ? 1 : 0.5).strokeColor(isHeader ? "#000000" : "#aaaaaa");
+      if (isHeader) doc.moveTo(30, y).lineTo(565, y).stroke();
+      doc.moveTo(30, y + height).lineTo(565, y + height).stroke();
+      colBounds.forEach(x => {
+        doc.moveTo(x, y).lineTo(x, y + height).stroke();
+      });
+      doc.strokeColor("#000000").lineWidth(1);
+    };
+
+    const headerHeight = 20;
+    drawRowGrid(tableTop, headerHeight, true);
+
+    doc.font("Helvetica-Bold").fontSize(9);
+    doc.text("S.No", snoX, tableTop + 5);
+    doc.text("Date", dateX, tableTop + 5);
+    doc.text("Event", eventX, tableTop + 5);
+    doc.text("Company", companyX, tableTop + 5);
+    doc.text("User", userX, tableTop + 5);
+    doc.text("Reason", reasonX, tableTop + 5);
+
+    let currentY = tableTop + headerHeight;
+
+    doc.font("Helvetica").fontSize(8);
+    logs.forEach((log: any, index: number) => {
+      const dateStr = log.data ? new Date(log.data).toLocaleDateString() : "-";
+      const reasonStr = log.reason || "-";
+      const companyStr = log.company_name || "-";
+      const userStr = log.user_name || "Unknown";
+
+      const textHeight = Math.max(
+        doc.heightOfString(reasonStr, { width: 140 }),
+        doc.heightOfString(companyStr, { width: 105 }),
+        doc.heightOfString(userStr, { width: 85 }),
+        12
+      );
+      const rowHeight = textHeight + 10;
+
+      if (currentY + rowHeight > 750) {
+        doc.addPage();
+        currentY = 30;
+        drawRowGrid(currentY, headerHeight, true);
+        doc.font("Helvetica-Bold").fontSize(9);
+        doc.text("S.No", snoX, currentY + 5);
+        doc.text("Date", dateX, currentY + 5);
+        doc.text("Event", eventX, currentY + 5);
+        doc.text("Company", companyX, currentY + 5);
+        doc.text("User", userX, currentY + 5);
+        doc.text("Reason", reasonX, currentY + 5);
+        currentY += headerHeight;
+        doc.font("Helvetica").fontSize(8);
+      }
+
+      drawRowGrid(currentY, rowHeight, false);
+
+      doc.text((index + 1).toString(), snoX, currentY + 5);
+      doc.text(dateStr, dateX, currentY + 5, { width: 75 });
+      doc.text(log.log || "-", eventX, currentY + 5, { width: 75 });
+      doc.text(companyStr, companyX, currentY + 5, { width: 105 });
+      doc.text(userStr, userX, currentY + 5, { width: 85 });
+      doc.text(reasonStr, reasonX, currentY + 5, { width: 140 });
+
+      currentY += rowHeight;
+    });
+
+    doc.end();
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// Generic Product History PDF - handles all product types
+export const getProductHistoryPDF = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id, productType } = req.params;
+    const { startDate, endDate, logType, details } = req.body;
+
+    if (!id || !productType) {
+      res.status(400).json({ success: false, message: "Product ID and type are required" });
+      return;
+    }
+
+    // Map URL product types to activity_logs product values
+    const productTypeMap: Record<string, string[]> = {
+      laptop: ['laptop', 'Laptop', 'LAPTOP', 'laptops', 'Laptops'],
+      hdd: ['hdd', 'HDD', 'Hdd', 'hdds', 'HDDs'],
+      m2: ['m_2', 'm2', 'M2', 'M_2', 'M.2', 'm.2'],
+      monitor: ['monitor', 'Monitor', 'MONITOR', 'monitors', 'Monitors'],
+      mobileWorkstation: ['mobileworkstation', 'mobileWorkStation', 'MobileWorkstation', 'Mobile Workstation', 'mobile workstation'],
+      nvme: ['nvme', 'NVMe', 'Nvme', 'nvmes', 'NVMEs'],
+      ram: ['ram', 'RAM', 'Ram', 'rams', 'RAMs'],
+      ssd: ['ssd', 'SSD', 'Ssd', 'ssds', 'SSDs'],
+      system: ['system', 'System', 'SYSTEM', 'systems', 'Systems'],
+      workstation: ['workstation', 'Workstation', 'WORKSTATION', 'workstations', 'Workstations'],
+      graphicsCard: ['graphicscard', 'graphicsCard', 'GraphicsCard', 'GraphicCard', 'graphicCard', 'graphics card', 'Graphics Card'],
+    };
+
+    const productNames = productTypeMap[productType];
+    if (!productNames) {
+      res.status(400).json({ success: false, message: `Invalid product type: ${productType}` });
+      return;
+    }
+
+    // Build filtered query
+    const productFilter = productNames.map(() => `al.product = ?`).join(' OR ');
+    let query = `
+      SELECT al.*, u.name as user_name, c.company_name
+      FROM activity_logs al
+      LEFT JOIN company c ON al.CompanyID = c.id
+      LEFT JOIN users u ON al.userID = u.id
+      WHERE al.productId = ? AND (${productFilter})
+    `;
+    const params: any[] = [id, ...productNames];
+
+    if (logType) {
+      query += ` AND al.log = ?`;
+      params.push(logType);
+    }
+    if (startDate) {
+      query += ` AND al.data >= ?`;
+      params.push(`${startDate} 00:00:00`);
+    }
+    if (endDate) {
+      query += ` AND al.data <= ?`;
+      params.push(`${endDate} 23:59:59`);
+    }
+
+    query += ` ORDER BY al.data DESC`;
+
+    const [logs] = await pool.execute<any[]>(query, params);
+
+    const PDFDocument = require("pdfkit");
+    const doc = new PDFDocument({ margin: 30, size: "A4" });
+    const pdfTitle = (productType.replace(/([A-Z])/g, ' $1').trim().toUpperCase()) + ' ACTIVITY HISTORY';
+    const filename = `${productType}_History_${new Date().toISOString().split("T")[0]}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+    doc.pipe(res);
+
+    // --- Logo & Branding ---
+    const logoPath = "src/assets/PhyramidLogo.png";
+    const pageWidth = 595;
+    const logoWidth = 50;
+    try {
+      doc.image(logoPath, (pageWidth / 2) - (logoWidth / 2), 30, { width: logoWidth });
+    } catch (err) {
+      console.error("Logo not found at", logoPath);
+    }
+    doc.font("Helvetica-Bold").fontSize(10).text("PYRAMID BUSINESS SYSTEMS", 30, 85, { align: "center", width: 535 });
+    doc.font("Helvetica-Bold").fontSize(16).text(pdfTitle, 30, 105, { align: "center", width: 535 });
+    doc.fontSize(9).font("Helvetica").text(`Generated on: ${new Date().toLocaleDateString()}`, 30, 125, { align: "center", width: 535 });
+
+    // --- Product Details ---
+    doc.moveDown(2);
+    const detailY = 150;
+    if (details) {
+      const detailStr = Object.entries(details)
+        .filter(([_, v]) => v)
+        .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1).replace(/([A-Z])/g, ' $1')}: ${v}`)
+        .join('  |  ');
+      doc.font("Helvetica-Bold").fontSize(10).text(detailStr, 30, detailY, { width: 535 });
+    }
+
+    // --- Filter Info ---
+    const filterY = detailY + 22;
+    const filterText = [
+      logType ? `Log Type: ${logType}` : "Log Type: All",
+      startDate ? `Start: ${startDate}` : null,
+      endDate ? `End: ${endDate}` : null,
+    ].filter(Boolean).join(" | ");
+    doc.font("Helvetica").fontSize(9).text(filterText, 30, filterY);
+
+    // --- Table with borders ---
+    const tableTop = filterY + 20;
+    const colBounds = [30, 60, 140, 220, 330, 420, 565];
+    const snoX = colBounds[0] + 3;
+    const dateX = colBounds[1] + 3;
+    const eventX = colBounds[2] + 3;
+    const companyX = colBounds[3] + 3;
+    const userX = colBounds[4] + 3;
+    const reasonX = colBounds[5] + 3;
+
+    const drawRowGrid = (y: number, height: number, isHeader = false) => {
+      doc.lineWidth(isHeader ? 1 : 0.5).strokeColor(isHeader ? "#000000" : "#aaaaaa");
+      if (isHeader) doc.moveTo(30, y).lineTo(565, y).stroke();
+      doc.moveTo(30, y + height).lineTo(565, y + height).stroke();
+      colBounds.forEach((x: number) => {
+        doc.moveTo(x, y).lineTo(x, y + height).stroke();
+      });
+      doc.strokeColor("#000000").lineWidth(1);
+    };
+
+    const headerHeight = 20;
+    drawRowGrid(tableTop, headerHeight, true);
+    doc.font("Helvetica-Bold").fontSize(9);
+    doc.text("S.No", snoX, tableTop + 5);
+    doc.text("Date", dateX, tableTop + 5);
+    doc.text("Event", eventX, tableTop + 5);
+    doc.text("Company", companyX, tableTop + 5);
+    doc.text("User", userX, tableTop + 5);
+    doc.text("Reason", reasonX, tableTop + 5);
+
+    let currentY = tableTop + headerHeight;
+    doc.font("Helvetica").fontSize(8);
+
+    logs.forEach((log: any, index: number) => {
+      const dateStr = log.data ? new Date(log.data).toLocaleDateString() : "-";
+      const reasonStr = log.reason || "-";
+      const companyStr = log.company_name || "-";
+      const userStr = log.user_name || "Unknown";
+
+      const textHeight = Math.max(
+        doc.heightOfString(reasonStr, { width: 140 }),
+        doc.heightOfString(companyStr, { width: 105 }),
+        doc.heightOfString(userStr, { width: 85 }),
+        12
+      );
+      const rowHeight = textHeight + 10;
+
+      if (currentY + rowHeight > 750) {
+        doc.addPage();
+        currentY = 30;
+        drawRowGrid(currentY, headerHeight, true);
+        doc.font("Helvetica-Bold").fontSize(9);
+        doc.text("S.No", snoX, currentY + 5);
+        doc.text("Date", dateX, currentY + 5);
+        doc.text("Event", eventX, currentY + 5);
+        doc.text("Company", companyX, currentY + 5);
+        doc.text("User", userX, currentY + 5);
+        doc.text("Reason", reasonX, currentY + 5);
+        currentY += headerHeight;
+        doc.font("Helvetica").fontSize(8);
+      }
+
+      drawRowGrid(currentY, rowHeight, false);
+      doc.text((index + 1).toString(), snoX, currentY + 5);
+      doc.text(dateStr, dateX, currentY + 5, { width: 75 });
+      doc.text(log.log || "-", eventX, currentY + 5, { width: 75 });
+      doc.text(companyStr, companyX, currentY + 5, { width: 105 });
+      doc.text(userStr, userX, currentY + 5, { width: 85 });
+      doc.text(reasonStr, reasonX, currentY + 5, { width: 140 });
+
+      currentY += rowHeight;
+    });
+
+    doc.end();
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 // Get Workstation History
@@ -3661,8 +4002,10 @@ export const getWorkstationHistory = async (
 
     // 1. Get Workstation Details
     const [workstations] = await pool.execute<any[]>(
-      `SELECT w.*
+      `SELECT w.*, w.Processor as processor,
+        gc.brand as graphicscard_brand, gc.model as graphicscard_model
        FROM workstation w
+       LEFT JOIN graphicscard gc ON w.graphicscardID = gc.id
        WHERE w.id = ?`,
       [id]
     );
@@ -3754,6 +4097,67 @@ export const getMobileWorkstationHistory = async (
   }
 };
 
+// Get M.2 History
+export const getM_2History = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      res.status(400).json({ success: false, message: "M.2 ID is required" });
+      return;
+    }
+
+    // 1. Get M.2 Details
+    const [m2s] = await pool.execute<any[]>(
+      `SELECT m.*, 
+        l.brand as laptop_brand, l.model as laptop_model,
+        sys.Name as system_name, sys.Processor as system_processor,
+        w.Processor as workstation_processor,
+        mw.brand as mw_brand, mw.model as mw_model
+       FROM m_2 m
+       LEFT JOIN laptop l ON m.laptopID = l.id
+       LEFT JOIN system sys ON m.systemID = sys.systemID 
+       LEFT JOIN workstation w ON m.WorkstationID = w.id
+       LEFT JOIN mobileworkstation mw ON m.MobileWorkstationID = mw.id
+       WHERE m.id = ?`,
+      [id]
+    );
+
+    if (m2s.length === 0) {
+      res.status(404).json({ success: false, message: "M.2 not found" });
+      return;
+    }
+
+    const m2 = m2s[0];
+
+    // 2. Get Activity Logs
+    const [logs] = await pool.execute<any[]>(
+      `SELECT al.*, u.name as user_name, c.company_name
+       FROM activity_logs al
+       LEFT JOIN company c ON al.CompanyID = c.id
+       LEFT JOIN users u ON al.userID = u.id
+        WHERE al.productId = ? AND (al.product = 'm_2' OR al.product = 'm2' OR al.product = 'M2' OR al.product = 'M_2' OR al.product = 'M.2')
+       ORDER BY al.data DESC`,
+      [id]
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        m_2: m2,
+        history: logs
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Update SSD
 export const updateSSD = async (
   req: Request,
@@ -3767,11 +4171,11 @@ export const updateSSD = async (
       SerialNumber,
       brand,
       dateOfPurchase,
-      deliveryCompany,
       serviceTag,
       speed,
       warrantyEndDate,
       ssdSize,
+      phyramidID,
       ssdID,
     } = req.body;
 
@@ -3784,16 +4188,16 @@ export const updateSSD = async (
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE ssd SET brand=?,ssdSize=?,speed=?,SerialNumber=?,serviceTag=?,warrantyEndDate=?,dateOfPurchase=?,deliveryCompany=? WHERE ssdID = ?`,
+      `UPDATE ssd SET brand=?,ssdSize=?,speed=?,SerialNumber=?,serviceTag=?,warrantyEndDate=?,dateOfPurchase=?,phyramidID=? WHERE ssdID = ?`,
       [
-        brand,
-        ssdSize,
-        speed,
-        SerialNumber,
-        serviceTag,
-        warrantyEndDate,
-        dateOfPurchase,
-        deliveryCompany,
+        brand ?? null,
+        ssdSize ?? null,
+        speed ?? null,
+        SerialNumber ?? null,
+        serviceTag ?? null,
+        warrantyEndDate ?? null,
+        dateOfPurchase ?? null,
+        phyramidID ?? null,
         ssdID,
       ]
     );
@@ -3822,12 +4226,12 @@ export const updateHDD = async (
     const {
       brand,
       dateOfPurchase,
-      deliveryCompany,
       serialNumber,
       serviceTag,
       size,
       speed,
       warrantyEndData,
+      phyramidID,
       ID
     } = req.body;
 
@@ -3840,16 +4244,16 @@ export const updateHDD = async (
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE hdd SET brand=?,size=?,speed=?,serialNumber=?,serviceTag=?,warrantyEndData=?,dateOfPurchase=?,deliveryCompany=? WHERE ID = ?`,
+      `UPDATE hdd SET brand=?,size=?,speed=?,serialNumber=?,serviceTag=?,warrantyEndData=?,dateOfPurchase=?,phyramidID=? WHERE ID = ?`,
       [
         brand,
         size,
-        speed,
-        serialNumber,
-        serviceTag,
-        warrantyEndData,
-        dateOfPurchase,
-        deliveryCompany,
+        speed || null,
+        serialNumber || null,
+        serviceTag || null,
+        warrantyEndData || null,
+        dateOfPurchase || null,
+        phyramidID || null,
         ID,
       ]
     );
@@ -3866,6 +4270,7 @@ export const updateHDD = async (
   }
 };
 
+// Update Graphics Card
 // Update Graphics Card
 export const updateGraphicsCard = async (
   req: Request,
@@ -3885,7 +4290,7 @@ export const updateGraphicsCard = async (
       serviceTag,
       warrantyEndDate,
       dateOfPurchase,
-      deliveryCompany,
+      phyramidID,
     } = req.body;
 
 
@@ -3898,7 +4303,7 @@ export const updateGraphicsCard = async (
     }
 
     const [result] = await pool.execute<any>(
-      `UPDATE graphicsCard SET brand = ?,size = ?,generation = ?,model = ?,serviceTag = ?,serviceNumber = ?,warrantyEndDate = ?,dateOfPurchase = ?,deliveryCompany = ? WHERE ID = ?`,
+      `UPDATE graphicsCard SET brand = ?,size = ?,generation = ?,model = ?,serviceTag = ?,serviceNumber = ?,warrantyEndDate = ?,dateOfPurchase = ?,phyramidID = ? WHERE ID = ?`,
       [
         brand ?? null,
         size ?? null,
@@ -3908,7 +4313,7 @@ export const updateGraphicsCard = async (
         serviceNumber ?? null,
         warrantyEndDate ?? null,
         dateOfPurchase ?? null,
-        deliveryCompany ?? null,
+        phyramidID ?? null,
         ID,
       ]
     );
@@ -3931,7 +4336,7 @@ export const addBulkProducts = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { companyId, products } = req.body;
+    const { companyId, products, deliveryType, replacementReason } = req.body;
 
     if (!companyId || !products) {
       const error: AppError = new Error("Company ID and products are required");
@@ -3939,15 +4344,28 @@ export const addBulkProducts = async (
       throw error;
     }
 
+    const isReplacement = deliveryType === 'Replacement';
+    const logType = isReplacement ? 'Replacement Delivery' : 'Delivery';
+    const logReason = isReplacement ? (replacementReason || 'Replacement Delivery') : 'Bulk assignment';
+
     const results: any = {};
     const promises: Promise<any>[] = [];
+    const userID = (req as any).user?.id || req.body.userID || null;
+
+    // Helper: create activity log
+    const logDelivery = (productId: any, productType: string) => {
+      return pool.execute(
+        `INSERT INTO activity_logs (reason, log, CompanyID, inventoryID, userID, productId, product, data) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [logReason, logType, companyId, null, userID, productId, productType]
+      );
+    };
 
     // 1. Laptops
     if (products.laptop && Array.isArray(products.laptop)) {
-      const laptopPromises = products.laptop.map((item: any) => {
-        return pool.execute(
+      const laptopPromises = products.laptop.map(async (item: any) => {
+        await pool.execute(
           `UPDATE laptop 
-           SET brand=?, model=?, processor_brand=?, processor_model=?, generation=?, service_id=?, CompanyID=?, phyramidID=?, date_of_purchase=?, adapter=?, inventoryID=?, ramID=?, storageType=?, storageSize=?, isAvailable=0 
+           SET brand=?, model=?, processor_brand=?, processor_model=?, generation=?, service_id=?, CompanyID=?, phyramidID=?, date_of_purchase=?, adapter=?, inventoryID=?, ramID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE id=?`,
           [
             item.brand,
@@ -3956,17 +4374,16 @@ export const addBulkProducts = async (
             item.processor_model || null,
             item.generation || null,
             item.service_id || null,
-            companyId, // Using top-level companyId
+            companyId,
             item.phyramidID || null,
             item.date_of_purchase || null,
             item.adapter || null,
             item.inventoryID || null,
             item.ramID || null,
-            item.storageType || null,
-            item.storageSize || null,
             item.id
           ]
         );
+        await logDelivery(item.id, 'laptop');
       });
       promises.push(
         Promise.all(laptopPromises).then((res) => {
@@ -3977,10 +4394,10 @@ export const addBulkProducts = async (
 
     // 2. Workstations
     if (products.workstation && Array.isArray(products.workstation)) {
-      const workstationPromises = products.workstation.map((item: any) => {
-        return pool.execute(
+      const workstationPromises = products.workstation.map(async (item: any) => {
+        await pool.execute(
           `UPDATE workstation 
-           SET Name=?, Processor=?, generation=?, serviceID=?, pyramidsID=?, ramID=?, ssdID=?, nvmeID=?, m2ID=?, graphicscardID=?, dateOfPurchase=?, deliveryCompany=?, inventoryID=?, CompanyID=?, isAvailable=0 
+           SET Name=?, Processor=?, generation=?, serviceID=?, pyramidsID=?, ramID=?, ssdID=?, nvmeID=?, m2ID=?, graphicscardID=?, dateOfPurchase=?, inventoryID=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE id=?`,
           [
             item.name || item.Name || null,
@@ -3994,12 +4411,12 @@ export const addBulkProducts = async (
             item.m2ID || null,
             item.graphicscardID || null,
             item.dateOfPurchase || null,
-            item.deliveryCompany || null,
             item.inventoryID || null,
             companyId,
             item.id
           ]
         );
+        await logDelivery(item.id, 'workstation');
       });
       promises.push(
         Promise.all(workstationPromises).then((res) => {
@@ -4010,17 +4427,16 @@ export const addBulkProducts = async (
 
     // 3. Systems (Desktops)
     if (products.system && Array.isArray(products.system)) {
-      const systemPromises = products.system.map((item: any) => {
-        return pool.execute(
+      const systemPromises = products.system.map(async (item: any) => {
+        await pool.execute(
           `UPDATE system 
-           SET Name=?, Processor=?, Generation=?, dateOfPurchase=?, deliveryCompany=?, pyramidsID=?, serviceID=?, inventoryID=?, CompanyID=?, isAvailable=0 
+           SET Name=?, Processor=?, Generation=?, dateOfPurchase=?, pyramidsID=?, serviceID=?, inventoryID=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE systemID=?`,
           [
             item.Name,
             item.Processor || null,
             item.Generation || null,
             item.dateOfPurchase || null,
-            item.deliveryCompany || null,
             item.pyramidsID || null,
             item.serviceID || null,
             item.inventoryID || null,
@@ -4028,6 +4444,7 @@ export const addBulkProducts = async (
             item.systemID
           ]
         );
+        await logDelivery(item.systemID, 'system');
       });
       promises.push(
         Promise.all(systemPromises).then((res) => {
@@ -4038,10 +4455,10 @@ export const addBulkProducts = async (
 
     // 4. Monitors
     if (products.monitor && Array.isArray(products.monitor)) {
-      const monitorPromises = products.monitor.map((item: any) => {
-        return pool.execute(
+      const monitorPromises = products.monitor.map(async (item: any) => {
+        await pool.execute(
           `UPDATE monitor 
-           SET name=?, size=?, service_tag=?, pyramid_id=?, date_of_purchase=?, warranty_date=?, CompanyID=?, isAvailable=0 
+           SET name=?, size=?, service_tag=?, pyramid_id=?, date_of_purchase=?, warranty_date=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE id=?`,
           [
             item.name,
@@ -4054,6 +4471,7 @@ export const addBulkProducts = async (
             item.id
           ]
         );
+        await logDelivery(item.id, 'monitor');
       });
       promises.push(
         Promise.all(monitorPromises).then((res) => {
@@ -4064,10 +4482,10 @@ export const addBulkProducts = async (
 
     // 5. SSDs
     if (products.ssd && Array.isArray(products.ssd)) {
-      const ssdPromises = products.ssd.map((item: any) => {
-        return pool.execute(
+      const ssdPromises = products.ssd.map(async (item: any) => {
+        await pool.execute(
           `UPDATE ssd 
-           SET brand=?, ssdSize=?, speed=?, SerialNumber=?, serviceTag=?, warrantyEndDate=?, dateOfPurchase=?, deliveryCompany=?, CompanyID=?, isAvailable=0 
+           SET brand=?, ssdSize=?, speed=?, SerialNumber=?, serviceTag=?, warrantyEndDate=?, dateOfPurchase=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE ssdID=?`,
           [
             item.brand,
@@ -4077,11 +4495,11 @@ export const addBulkProducts = async (
             item.serviceTag || null,
             item.warrantyEndDate || null,
             item.dateOfPurchase || null,
-            item.deliveryCompany || null,
             companyId,
             item.ssdID
           ]
         );
+        await logDelivery(item.ssdID, 'ssd');
       });
       promises.push(
         Promise.all(ssdPromises).then((res) => {
@@ -4092,10 +4510,10 @@ export const addBulkProducts = async (
 
     // 6. HDDs
     if (products.hdd && Array.isArray(products.hdd)) {
-      const hddPromises = products.hdd.map((item: any) => {
-        return pool.execute(
+      const hddPromises = products.hdd.map(async (item: any) => {
+        await pool.execute(
           `UPDATE hdd 
-           SET brand=?, speed=?, serialNumber=?, serviceTag=?, warrantyEndData=?, dateOfPurchase=?, deliveryCompany=?, size=?, CompanyID=?, isAvailable=0 
+           SET brand=?, speed=?, serialNumber=?, serviceTag=?, warrantyEndData=?, dateOfPurchase=?, size=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE ID=?`,
           [
             item.brand,
@@ -4104,12 +4522,12 @@ export const addBulkProducts = async (
             item.serviceTag || null,
             item.warrantyEndData || null,
             item.dateOfPurchase || null,
-            item.deliveryCompany || null,
             item.size || null,
             companyId,
             item.ID
           ]
         );
+        await logDelivery(item.ID, 'hdd');
       });
       promises.push(
         Promise.all(hddPromises).then((res) => {
@@ -4120,10 +4538,10 @@ export const addBulkProducts = async (
 
     // 7. NVMe
     if (products.nvme && Array.isArray(products.nvme)) {
-      const nvmePromises = products.nvme.map((item: any) => {
-        return pool.execute(
+      const nvmePromises = products.nvme.map(async (item: any) => {
+        await pool.execute(
           `UPDATE nvme 
-           SET brand=?, Size=?, speed=?, serialNumber=?, serviceTag=?, warrantyEndDate=?, dateOfPurchase=?, deliveryComany=?, CompanyID=?, isAvailable=0 
+           SET brand=?, Size=?, speed=?, serialNumber=?, serviceTag=?, warrantyEndDate=?, dateOfPurchase=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE ID=?`,
           [
             item.brand,
@@ -4133,11 +4551,11 @@ export const addBulkProducts = async (
             item.serviceTag || null,
             item.warrantyEndDate || null,
             item.dateOfPurchase || null,
-            item.deliveryCompany || item.deliveryComany || null,
             companyId,
             item.ID
           ]
         );
+        await logDelivery(item.ID, 'nvme');
       });
       promises.push(
         Promise.all(nvmePromises).then((res) => {
@@ -4148,10 +4566,10 @@ export const addBulkProducts = async (
 
     // 8. Graphics Cards
     if (products.graphicscard && Array.isArray(products.graphicscard)) {
-      const graphicsCardPromises = products.graphicscard.map((item: any) => {
-        return pool.execute(
+      const graphicsCardPromises = products.graphicscard.map(async (item: any) => {
+        await pool.execute(
           `UPDATE graphicscard 
-           SET brand=?, model=?, size=?, generation=?, serviceNumber=?, serviceTag=?, warrantyEndDate=?, dateOfPurchase=?, deliveryCompany=?, CompanyID=?, isAvailable=0 
+           SET brand=?, model=?, size=?, generation=?, serviceNumber=?, serviceTag=?, warrantyEndDate=?, dateOfPurchase=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE ID=?`,
           [
             item.brand || null,
@@ -4162,11 +4580,11 @@ export const addBulkProducts = async (
             item.serviceTag || null,
             item.warrantyEndDate || null,
             item.dateOfPurchase || null,
-            item.deliveryCompany || null,
             companyId,
             item.ID
           ]
         );
+        await logDelivery(item.ID, 'graphicscard');
       });
       promises.push(
         Promise.all(graphicsCardPromises).then((res) => {
@@ -4177,10 +4595,10 @@ export const addBulkProducts = async (
 
     // 9. RAM
     if (products.ram && Array.isArray(products.ram)) {
-      const ramPromises = products.ram.map((item: any) => {
-        return pool.execute(
+      const ramPromises = products.ram.map(async (item: any) => {
+        await pool.execute(
           `UPDATE ram 
-           SET brand=?, date_of_purchase=?, form_factor=?, phyramidID=?, service_id=?, size=?, type=?, companyID=?, isAvailable=0 
+           SET brand=?, date_of_purchase=?, form_factor=?, phyramidID=?, service_id=?, size=?, type=?, companyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE id=?`,
           [
             item.brand,
@@ -4194,6 +4612,7 @@ export const addBulkProducts = async (
             item.id
           ]
         );
+        await logDelivery(item.id, 'ram');
       });
       promises.push(
         Promise.all(ramPromises).then((res) => {
@@ -4204,10 +4623,10 @@ export const addBulkProducts = async (
 
     // 10. Mobile Workstations
     if (products.mobile_workstation && Array.isArray(products.mobile_workstation)) {
-      const mobileWorkstationPromises = products.mobile_workstation.map((item: any) => {
-        return pool.execute(
+      const mobileWorkstationPromises = products.mobile_workstation.map(async (item: any) => {
+        await pool.execute(
           `UPDATE mobileworkstation 
-           SET brand=?, model=?, processor_brand=?, processor_model=?, generation=?, date_of_purchase=?, adapter=?, phyramidID=?, service_id=?, CompanyID=?, isAvailable=0 
+           SET brand=?, model=?, processor_brand=?, processor_model=?, generation=?, date_of_purchase=?, adapter=?, phyramidID=?, service_id=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE id=?`,
           [
             item.brand || null,
@@ -4215,14 +4634,15 @@ export const addBulkProducts = async (
             item.processor_brand || null,
             item.processor_model || null,
             item.generation || null,
-            item.date_of_purchase || item.dateOfPurchase || null, // Assuming input uses dateOfPurchase (camelCase)
+            item.date_of_purchase || item.dateOfPurchase || null,
             item.adapter || null,
-            item.phyramidID || null, // Updated inputs
-            item.service_id || item.serviceTag || null, // Updated inputs
+            item.phyramidID || null,
+            item.service_id || item.serviceTag || null,
             companyId,
             item.id
           ]
         );
+        await logDelivery(item.id, 'mobileworkstation');
       });
       promises.push(
         Promise.all(mobileWorkstationPromises).then((res) => {
@@ -4233,10 +4653,10 @@ export const addBulkProducts = async (
 
     // 11. M.2
     if (products.m_2 && Array.isArray(products.m_2)) {
-      const m2Promises = products.m_2.map((item: any) => {
-        return pool.execute(
+      const m2Promises = products.m_2.map(async (item: any) => {
+        await pool.execute(
           `UPDATE m_2 
-           SET brand=?, size=?, type=?, form_factor=?, service_id=?, date_of_purchase=?, phyramidID=?, CompanyID=?, isAvailable=0 
+           SET brand=?, size=?, type=?, form_factor=?, service_id=?, date_of_purchase=?, phyramidID=?, CompanyID=?, isAvailable=0${isReplacement ? ", replacement_status='pending'" : ''} 
            WHERE id=?`,
           [
             item.brand || null,
@@ -4250,6 +4670,7 @@ export const addBulkProducts = async (
             item.id
           ]
         );
+        await logDelivery(item.id, 'm_2');
       });
       promises.push(
         Promise.all(m2Promises).then((res: any) => {
@@ -4284,10 +4705,9 @@ export const updateWorkstation = async (
       dateOfPurchase,
       graphicscardID,
       id,
-      processor,
+      Processor,
       pyramidsID,
       serviceID,
-      deliveryCompany,
       addRam,
       removeRam,
       addSSD,
@@ -4323,10 +4743,10 @@ export const updateWorkstation = async (
     const promises: Promise<any>[] = [];
 
     const workstationUpdatePromise = pool.execute<any>(
-      `UPDATE workstation SET Name=?, Processor=?, generation=?, serviceID=?, pyramidsID=?, ramID=?, ssdID=?, nvmeID=?, m2ID=?, graphicscardID=?, dateOfPurchase=?, deliveryCompany=?, inventoryID=? WHERE id = ?`,
+      `UPDATE workstation SET Name=?, Processor=?, generation=?, serviceID=?, pyramidsID=?, ramID=?, ssdID=?, nvmeID=?, m2ID=?, graphicscardID=?, dateOfPurchase=?, inventoryID=? WHERE id = ?`,
       [
         Name ?? null,
-        processor ?? null,
+        Processor ?? null,
         generation ?? null,
         serviceID || serviceTag || null,
         pyramidsID ?? null,
@@ -4336,7 +4756,6 @@ export const updateWorkstation = async (
         m2ID ?? null,
         graphicscardID ?? null,
         dateOfPurchase ?? null,
-        deliveryCompany ?? null,
         inventoryID ?? null,
         id,
       ]
@@ -4657,8 +5076,9 @@ export const updateLaptops = async (
       adapter,
       ramID,
       graphicscardID,
-      storageType,
-      storageSize,
+      ssdID,
+      nvmeID,
+      m2ID,
       inventoryID,
       phyramidID,
       isAvailable,
@@ -4673,6 +5093,8 @@ export const updateLaptops = async (
       removeNvme,
       addM2,
       removeM2,
+      addGraphicsCard,
+      removeGraphicsCard,
     } = req.body;
 
     // Validate required fields
@@ -4696,12 +5118,20 @@ export const updateLaptops = async (
     if (generation !== undefined) { fieldsToUpdate.push("generation = ?"); valuesToUpdate.push(generation); }
     if (service_id !== undefined) { fieldsToUpdate.push("service_id = ?"); valuesToUpdate.push(service_id); }
     if (CompanyID !== undefined) { fieldsToUpdate.push("CompanyID = ?"); valuesToUpdate.push(CompanyID); }
-    if (date_of_purchase !== undefined) { fieldsToUpdate.push("date_of_purchase = ?"); valuesToUpdate.push(date_of_purchase); }
+    if (date_of_purchase !== undefined) {
+      // Create a date object from the input
+      const date = new Date(date_of_purchase);
+      // Format as YYYY-MM-DD
+      const formattedDate = date.toISOString().split('T')[0];
+      fieldsToUpdate.push("date_of_purchase = ?");
+      valuesToUpdate.push(formattedDate);
+    }
     if (adapter !== undefined) { fieldsToUpdate.push("adapter = ?"); valuesToUpdate.push(adapter); }
     if (ramID !== undefined) { fieldsToUpdate.push("ramID = ?"); valuesToUpdate.push(ramID); }
     if (graphicscardID !== undefined) { fieldsToUpdate.push("graphicscardID = ?"); valuesToUpdate.push(graphicscardID); }
-    if (storageType !== undefined) { fieldsToUpdate.push("storageType = ?"); valuesToUpdate.push(storageType); }
-    if (storageSize !== undefined) { fieldsToUpdate.push("storageSize = ?"); valuesToUpdate.push(storageSize); }
+    if (ssdID !== undefined) { fieldsToUpdate.push("ssdID = ?"); valuesToUpdate.push(ssdID); }
+    if (nvmeID !== undefined) { fieldsToUpdate.push("nvmeID = ?"); valuesToUpdate.push(nvmeID); }
+    if (m2ID !== undefined) { fieldsToUpdate.push("m2ID = ?"); valuesToUpdate.push(m2ID); }
     if (inventoryID !== undefined) { fieldsToUpdate.push("inventoryID = ?"); valuesToUpdate.push(inventoryID); }
     if (phyramidID !== undefined) { fieldsToUpdate.push("phyramidID = ?"); valuesToUpdate.push(phyramidID); }
     if (isAvailable !== undefined) { fieldsToUpdate.push("isAvailable = ?"); valuesToUpdate.push(isAvailable); }
@@ -4789,6 +5219,26 @@ export const updateLaptops = async (
       });
     }
 
+    // 6. Graphics Card Updates
+    if (Array.isArray(addGraphicsCard)) {
+      addGraphicsCard.forEach((item: any) => {
+        const gpuId = item.id || item.ID || item.graphicscardID;
+        promises.push(pool.execute(
+          `UPDATE graphicscard SET laptopID = ?, companyID = ?, isAvailable = 0 WHERE id = ?`,
+          [id, companyIdToUse, gpuId]
+        ));
+      });
+    }
+    if (Array.isArray(removeGraphicsCard)) {
+      removeGraphicsCard.forEach((item: any) => {
+        const gpuId = item.id || item.ID || item.graphicscardID;
+        promises.push(pool.execute(
+          `UPDATE graphicscard SET laptopID = NULL, companyID = NULL, isAvailable = 1 WHERE id = ?`,
+          [gpuId]
+        ));
+      });
+    }
+
     // Execute all
     await Promise.all(promises);
 
@@ -4842,17 +5292,18 @@ export const addM_2 = async (
     const insertPromises = items.map(async (item: any) => {
       const {
         brand,
-        service_id,
+        serviceTag,
+        date_of_purchase,
         dateOfPurchase,
         size,
         type,
-        formFactor,
+        form_factor,
         phyramidID,
         inventoryID,
       } = item;
 
       // Default form_factor to 'Laptop' if not provided
-      const dbFormFactor = formFactor || 'Laptop';
+      const dbFormFactor = form_factor || 'Laptop';
 
       const [result] = await pool.execute<any>(
         `INSERT INTO m_2(brand, size, type, form_factor, service_id, date_of_purchase, phyramidID, inventoryID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -4861,8 +5312,8 @@ export const addM_2 = async (
           size || null,
           type || null,
           dbFormFactor,
-          service_id || null, // Directly use service_id
-          dateOfPurchase || null,
+          serviceTag || null, // Directly use service_id
+          date_of_purchase || dateOfPurchase || null,
           phyramidID || null,
           inventoryID || null,
         ]
@@ -4992,6 +5443,7 @@ export const getAllM_2 = async (
       brand,
       size,
       type,
+      form_factor,
       service_id,
       phyramidID,
       inventoryID,
@@ -5012,6 +5464,10 @@ export const getAllM_2 = async (
     if (type) {
       filterConditions.push("type LIKE ?");
       filterValues.push(`%${type}%`);
+    }
+    if (form_factor) {
+      filterConditions.push("form_factor LIKE ?");
+      filterValues.push(`%${form_factor}%`);
     }
     if (service_id) {
       filterConditions.push("service_id LIKE ?");

@@ -42,6 +42,8 @@ import {
   addM_2,
   getHDDHistory,
   getGraphicsCardHistory,
+  getGraphicsCardHistoryPDF,
+  getProductHistoryPDF,
   getWorkstationHistory,
   getMobileWorkstationHistory,
   getAllInventories,
@@ -51,7 +53,8 @@ import {
   editM_2,
   deleteM_2,
   getAllM_2,
-  updateM_2
+  updateM_2,
+  getM_2History
 } from "../controllers/inventory.controller";
 import { getDashboardStats } from "../controllers/dashboard.controller";
 import { generateDeliveryChallan } from "../controllers/pdf.controller";
@@ -109,8 +112,11 @@ router.get("/history/ssd/:id", getSSDHistory);
 router.get("/history/nvme/:id", getNVMeHistory);
 router.get("/history/hdd/:id", getHDDHistory);
 router.get("/history/graphicsCard/:id", getGraphicsCardHistory);
+router.post("/history/graphicsCard/:id/pdf", getGraphicsCardHistoryPDF);
+router.post("/history/:productType/:id/pdf", getProductHistoryPDF);
 router.get("/history/workstation/:id", getWorkstationHistory);
 router.get("/history/mobileWorkstation/:id", getMobileWorkstationHistory);
+router.get("/history/m2/:id", getM_2History);
 
 router.post("/getallLaptops", getAllLaptops);
 router.post("/getallMobileWorkstation", getAllMobileWorkstation);
