@@ -157,6 +157,11 @@ export const getAllLaptops = async (
     ]);
 
     const total = countResult[0].total;
+    const [data] = await pool.execute<any[]>(
+      `SELECT * from laptop LIMIT ? OFFSET ?`,
+      [limit.toString(), offset.toString()]
+    );
+
 
     res.json({
       success: true,
@@ -168,6 +173,7 @@ export const getAllLaptops = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: data
       },
     });
   } catch (error) {
@@ -238,6 +244,13 @@ export const getAllMonitors = async (
       WHERE ${whereClause}
     `;
 
+
+    const allDataQuery = `
+      SELECT *
+      FROM monitor
+      LIMIT ? OFFSET ?
+    `;
+
     const filteredQuery = `
       SELECT *
       FROM monitor
@@ -248,9 +261,11 @@ export const getAllMonitors = async (
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -266,6 +281,7 @@ export const getAllMonitors = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       }
     });
 
@@ -374,9 +390,11 @@ export const getAllRam = async (
     // 🔥 Parallel execution
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(dataQuery, [...filterValues, limit, offset])
     ]);
 
@@ -392,6 +410,7 @@ export const getAllRam = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       }
     });
 
@@ -488,12 +507,21 @@ export const getAllSSD = async (
       LIMIT ? OFFSET ?
     `;
 
+
+    const allDataQuery = `
+      SELECT *
+      FROM ssd
+      LIMIT ? OFFSET ?
+    `;
+
     // 🔥 Execute queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -509,6 +537,7 @@ export const getAllSSD = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
@@ -607,12 +636,21 @@ export const getAllNVMe = async (
       LIMIT ? OFFSET ?
     `;
 
+
+    const allDataQuery = `
+      SELECT *
+      FROM nvme
+      LIMIT ? OFFSET ?
+    `;
+
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -628,6 +666,7 @@ export const getAllNVMe = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
@@ -708,12 +747,20 @@ export const getAllHDD = async (
       LIMIT ? OFFSET ?
     `;
 
+    const allDataQuery = `
+      SELECT *
+      FROM hdd
+      LIMIT ? OFFSET ?
+    `;
+
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -729,6 +776,7 @@ export const getAllHDD = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
@@ -834,13 +882,20 @@ export const getAllGraphicsCard = async (
           WHERE ${whereClause}
           LIMIT ? OFFSET ?
         `;
+    const allDataQuery = `
+      SELECT *
+      FROM graphicscard
+      LIMIT ? OFFSET ?
+    `;
 
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -856,6 +911,7 @@ export const getAllGraphicsCard = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
@@ -937,12 +993,20 @@ export const getAllWorkstation = async (
       LIMIT ? OFFSET ?
     `;
 
+    const allDataQuery = `
+      SELECT *
+      FROM workstation
+      LIMIT ? OFFSET ?
+    `;
+
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -958,6 +1022,7 @@ export const getAllWorkstation = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
@@ -1065,12 +1130,20 @@ export const getAllMobileWorkstation = async (
       LIMIT ? OFFSET ?
     `;
 
+    const allDataQuery = `
+      SELECT *
+      FROM mobileworkstation
+      LIMIT ? OFFSET ?
+    `;
+
     //  Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -1086,6 +1159,7 @@ export const getAllMobileWorkstation = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
@@ -1167,12 +1241,20 @@ export const getAllSystem = async (
       LIMIT ? OFFSET ?
     `;
 
+    const allDataQuery = `
+      SELECT *
+      FROM system
+      LIMIT ? OFFSET ?
+    `;
+
     // 🔥 Execute all queries in parallel
     const [
       [countResult],
+      [allData],
       [rows]
     ] = await Promise.all([
       pool.execute<any[]>(countQuery, filterValues),
+      pool.execute<any[]>(allDataQuery, [limit, offset]),
       pool.execute<any[]>(filteredQuery, [...filterValues, limit, offset])
     ]);
 
@@ -1188,6 +1270,7 @@ export const getAllSystem = async (
           totalItems: total,
           itemsPerPage: limit,
         },
+        data: allData
       },
     });
 
