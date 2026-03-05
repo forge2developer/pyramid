@@ -4264,8 +4264,8 @@ export const updateSSD = async (
 
     console.log('nova', req.body);
     // Validate required fields
-    if (!SerialNumber || !brand) {
-      const error: AppError = new Error("SerialNumber and brand are required");
+    if (!serviceTag || !phyramidID) {
+      const error: AppError = new Error("serviceTag and phyramidID are required");
       error.statusCode = 400;
       throw error;
     }
