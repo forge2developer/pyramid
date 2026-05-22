@@ -1158,6 +1158,97 @@ export const updateChallan = async (req: Request, res: Response) => {
 
         doc.end();
 
+        // Fetch old challan data to find removed/added items
+        const [oldChallanRows] = await pool.execute<any>(
+            'SELECT products_data FROM challan_history WHERE id = ?',
+            [id]
+        );
+
+        let oldProducts: Record<string, any[]> = {};
+        if (oldChallanRows && oldChallanRows.length > 0 && oldChallanRows[0].products_data) {
+            oldProducts = typeof oldChallanRows[0].products_data === 'string' 
+                ? JSON.parse(oldChallanRows[0].products_data) 
+                : oldChallanRows[0].products_data;
+        }
+
+        const getTableAndIdColumn = (type: string) => {
+            const t = type.toLowerCase();
+            switch(t) {
+                case 'laptop': return { table: 'laptop', idCol: 'id' };
+                case 'system': return { table: 'system', idCol: 'systemID' };
+                case 'workstation': return { table: 'workstation', idCol: 'id' };
+                case 'mobile_workstation': return { table: 'mobileworkstation', idCol: 'id' };
+                case 'monitor': return { table: 'monitor', idCol: 'id' };
+                case 'ram': return { table: 'ram', idCol: 'id' };
+                case 'ssd': return { table: 'ssd', idCol: 'ssdID' };
+                case 'nvme': return { table: 'nvme', idCol: 'ID' };
+                case 'hdd': return { table: 'hdd', idCol: 'ID' };
+                case 'graphicscard': return { table: 'graphicscard', idCol: 'id' };
+                case 'm_2': return { table: 'm_2', idCol: 'id' };
+                default: return null;
+            }
+        };
+
+        const addedItems: { type: string, id: any }[] = [];
+        const removedItems: { type: string, id: any }[] = [];
+
+        const newProducts = products as Record<string, any[]>;
+        const allTypes = new Set([...Object.keys(oldProducts), ...Object.keys(newProducts)]);
+
+        for (const type of allTypes) {
+            const oldItems = oldProducts[type] || [];
+            const newItems = newProducts[type] || [];
+            
+            const getId = (item: any) => item.id || item.ID || item.ssdID || item.systemID || item.monitorID || item.ramID || item.hddID || item.WorkstationID || item.GraphicsCardID;
+            
+            const oldIds = oldItems.map(getId);
+            const newIds = newItems.map(getId);
+
+            for (const item of newItems) {
+                const itemId = getId(item);
+                if (itemId && !oldIds.includes(itemId)) {
+                    addedItems.push({ type, id: itemId });
+                }
+            }
+
+            for (const item of oldItems) {
+                const itemId = getId(item);
+                if (itemId && !newIds.includes(itemId)) {
+                    removedItems.push({ type, id: itemId });
+                }
+            }
+        }
+
+        // Update DB for removed items (return to available pool)
+        for (const { type, id: itemId } of removedItems) {
+            const tableInfo = getTableAndIdColumn(type);
+            if (tableInfo) {
+                try {
+                    await pool.execute(
+                        `UPDATE ${tableInfo.table} SET CompanyID = NULL, isAvailable = 1 WHERE ${tableInfo.idCol} = ?`,
+                        [itemId]
+                    );
+                } catch (err) {
+                    console.error(`Error updating removed item ${type} ${itemId}:`, err);
+                }
+            }
+        }
+
+        // Update DB for added items (assign to company)
+        for (const { type, id: itemId } of addedItems) {
+            const tableInfo = getTableAndIdColumn(type);
+            if (tableInfo) {
+                try {
+                    await pool.execute(
+                        `UPDATE ${tableInfo.table} SET CompanyID = ?, isAvailable = 0 WHERE ${tableInfo.idCol} = ?`,
+                        [company_id, itemId]
+                    );
+                } catch (err) {
+                    console.error(`Error updating added item ${type} ${itemId}:`, err);
+                }
+            }
+        }
+
         // Update database
         await pool.execute(
             `UPDATE challan_history 

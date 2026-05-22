@@ -75,8 +75,7 @@ const GraphicsCardInventory = () => {
   const [pyramidOpen, setPyramidOpen] = useState(false)
   const [generationOpen, setGenerationOpen] = useState(false)
 
-  const [formData, setFormData] = useState({
-    brand: "",
+  const [formData, setFormData] = useState({brand: "",
     size: "",
     model: "",
     serviceNumber: "",
@@ -84,7 +83,7 @@ const GraphicsCardInventory = () => {
     inventoryID: "",
     phyramidID: "",
     generation: "",
-    isAvailable: false,
+    isAvailable: false, date_of_purchase: ""
   })
 
   const [monitorFilters, setMonitorFilters] = useState<Laptop[]>([])
@@ -227,8 +226,7 @@ const GraphicsCardInventory = () => {
   const uniqueInventoryID = [...new Set(monitorFilters?.map((graphicsCard: any) => graphicsCard.inventoryID).filter(Boolean))]
 
   const handleReset = async () => {
-    const emptyForm = {
-      brand: "",
+    const emptyForm = {brand: "",
       size: "",
       model: "",
       serviceNumber: "",
@@ -236,7 +234,7 @@ const GraphicsCardInventory = () => {
       inventoryID: "",
       phyramidID: "",
       generation: "",
-      isAvailable: false,
+      isAvailable: false, date_of_purchase: ""
     }
     setFormData(emptyForm);
     fetchLaptops(1, true, emptyForm);
@@ -719,9 +717,16 @@ const GraphicsCardInventory = () => {
                 </PopoverContent>
               </Popover>
             </div>
-          </div>
           {/* Availability Switch */}
-          <div className="space-y-4">
+          <div className="space-y-2">
+              <Label htmlFor="date_of_purchase">Date of Purchase</Label>
+              <Input
+                type="date"
+                value={formData.date_of_purchase || ""}
+                onChange={(e) => handleSelectChange("date_of_purchase", e.target.value)}
+              />
+            </div>
+<div className="space-y-4">
             <Label htmlFor="isAvailable">Availability</Label>
             <div className="flex items-center space-x-2 h-10">
               <Switch
@@ -741,7 +746,10 @@ const GraphicsCardInventory = () => {
                 {formData.isAvailable ? "Show Available Only" : "Show All"}
               </Label>
             </div>
+          
+            </div>
           </div>
+
           <div className="flex flex-col sm:flex-row justify-end gap-4 mt-6">
             <Button type="submit" className="w-full sm:w-auto">Submit</Button>
             <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto">

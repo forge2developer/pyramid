@@ -57,14 +57,13 @@ export default function WorkstationInventory() {
   const [serialNumberOpen, setserialNumberOpen] = useState(false)
   const [inventoryIDOpen, setInventoryIDOpen] = useState(false)
 
-  const [formData, setFormData] = useState({
-    Name: "",
+  const [formData, setFormData] = useState({Name: "",
     Processor: "",
     generation: "",
     serviceID: "",
     pyramidsID: "",
     inventoryID: "",
-    isAvailable: false,
+    isAvailable: false, date_of_purchase: ""
   })
 
   // Data
@@ -400,14 +399,13 @@ export default function WorkstationInventory() {
   const uniqueInventoryID = [...new Set(monitorFilters?.map((monitor: any) => monitor.inventoryID).filter(Boolean))]
 
   const handleReset = async () => {
-    const emptyForm = {
-      Name: "",
+    const emptyForm = {Name: "",
       Processor: "",
       generation: "",
       serviceID: "",
       pyramidsID: "",
       inventoryID: "",
-      isAvailable: false,
+      isAvailable: false, date_of_purchase: ""
     }
     setFormData(emptyForm);
     fetchWorkstations(1, emptyForm);
@@ -606,9 +604,16 @@ export default function WorkstationInventory() {
                 </PopoverContent>
               </Popover>
             </div>
-          </div>
           {/* Availability Switch */}
-          <div className="space-y-4">
+          <div className="space-y-2">
+              <Label htmlFor="date_of_purchase">Date of Purchase</Label>
+              <Input
+                type="date"
+                value={formData.date_of_purchase || ""}
+                onChange={(e) => handleSelectChange("date_of_purchase", e.target.value)}
+              />
+            </div>
+<div className="space-y-4">
             <Label htmlFor="isAvailable">Availability</Label>
             <div className="flex items-center space-x-2 h-10">
               <Switch
@@ -629,7 +634,10 @@ export default function WorkstationInventory() {
                 {formData.isAvailable ? "Show Available Only" : "Show All"}
               </Label>
             </div>
+          
+            </div>
           </div>
+
           <div className="flex flex-col sm:flex-row justify-end gap-4 mt-6">
             <Button type="submit" className="w-full sm:w-auto">Submit</Button>
             <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto">

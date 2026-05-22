@@ -137,6 +137,12 @@ export const getAllLaptops = async (
       filterValues.push(`%${req.body.generation}%`);
     }
 
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("date_of_purchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     // Build WHERE clause
     let whereClause = "isActive = 1";
     if (isAvailable) {
@@ -229,6 +235,12 @@ export const getAllMonitors = async (
       filterConditions.push("inventoryID = ?");
       filterValues.push(inventoryID);
     }
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("date_of_purchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -359,6 +371,12 @@ export const getAllRam = async (
       filterConditions.push("laptopID = ?");
       filterValues.push(req.body.LaptopID);
     }
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("date_of_purchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -485,6 +503,12 @@ export const getAllSSD = async (
       filterValues.push(req.body.LaptopID);
     }
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("dateOfPurchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -612,6 +636,12 @@ export const getAllNVMe = async (
       filterValues.push(`%${req.body.phyramidID}%`);
     }
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("dateOfPurchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
 
     if (isAvailable) {
@@ -725,6 +755,12 @@ export const getAllHDD = async (
     }
 
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("dateOfPurchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -861,6 +897,12 @@ export const getAllGraphicsCard = async (
     }
 
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("dateOfPurchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -971,6 +1013,12 @@ export const getAllWorkstation = async (
     }
 
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("dateOfPurchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -1108,6 +1156,12 @@ export const getAllMobileWorkstation = async (
 
 
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("date_of_purchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND (isAvailable = '1' OR isAvailable = 1)";
@@ -1219,6 +1273,12 @@ export const getAllSystem = async (
     }
 
     // WHERE clause
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("dateOfPurchase = ?");
+      filterValues.push(req.body.date_of_purchase);
+    }
+
     let whereClause = "isActive = 1";
     if (isAvailable) {
       whereClause += " AND isAvailable = 1";
@@ -5588,6 +5648,12 @@ export const getAllM_2 = async (
     }
     if (isAvailable) {
       filterConditions.push("isAvailable = 1 AND CompanyID IS NULL");
+    }
+
+    
+    if (req.body.date_of_purchase) {
+      filterConditions.push("date_of_purchase = ?");
+      filterValues.push(req.body.date_of_purchase);
     }
 
     let whereClause = "1=1";

@@ -87,15 +87,14 @@ const ITEMS_PER_PAGE = 20
 
 export default function LaptopInventory() {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    brand: "",
+  const [formData, setFormData] = useState({brand: "",
     model: "",
     processor: "",
     service_id: "",
     inventoryID: "",
     pyramidID: "",
     generation: "",
-    isAvailable: false,
+    isAvailable: false, date_of_purchase: ""
   })
   const [laptops, setLaptops] = useState<Laptop[]>([])
   const [ram, setRam] = useState<Laptop[]>([])
@@ -262,15 +261,14 @@ export default function LaptopInventory() {
   }
 
   const handleReset = async () => {
-    const emptyForm = {
-      brand: "",
+    const emptyForm = {brand: "",
       model: "",
       processor: "",
       service_id: "",
       inventoryID: "",
       pyramidID: "",
       generation: "",
-      isAvailable: false,
+      isAvailable: false, date_of_purchase: ""
     }
     setFormData(emptyForm);
     fetchLaptops(1, emptyForm);
@@ -962,7 +960,15 @@ export default function LaptopInventory() {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="date_of_purchase">Date of Purchase</Label>
+              <Input
+                type="date"
+                value={formData.date_of_purchase || ""}
+                onChange={(e) => handleSelectChange("date_of_purchase", e.target.value)}
+              />
+            </div>
+<div className="space-y-2">
               <Label htmlFor="isAvailable">Availability</Label>
               <div className="flex items-center space-x-2 h-10">
                 <Switch
@@ -988,7 +994,8 @@ export default function LaptopInventory() {
                 </Label>
               </div>
             </div>
-          </div>
+          
+            </div>
           <div className="flex flex-col sm:flex-row justify-end gap-4 mt-6">
             <Button type="submit" className="w-full sm:w-auto">Submit</Button>
             <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto">
